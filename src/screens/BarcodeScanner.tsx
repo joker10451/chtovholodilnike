@@ -2,10 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import { IconCamera } from '../components/icons';
 import { CATEGORY_DOT, Spinner, Stepper, toast } from '../components/ui';
 import { addShoppingItems, saveItems } from '../data/repo';
+import { recognize } from '../lib/ai';
+import {
+  detectBarcode,
+  detectBarcodeFromBlob,
+  isBarcodeSupported,
+  lookupBarcode,
+  type ScannedProduct,
+} from '../lib/barcode';
 import { makeItem } from '../lib/convert';
-import { detectBarcode, detectBarcodeFromBlob, hasBarcodeDetector, lookupBarcode, type ScannedProduct } from '../lib/barcode';
+import { toImagePart } from '../lib/image';
 import { todayISO } from '../shared/dates';
-import { LOCATION_LABELS, LOCATIONS, type Location } from '../shared/products';
+import { getProduct, guessProductKey, LOCATION_LABELS, LOCATIONS, type Location } from '../shared/products';
 import { UNIT_LABELS, type BaseUnit } from '../shared/units';
 
 export function BarcodeScanner() {
@@ -26,7 +34,7 @@ export function BarcodeScanner() {
   const [location, setLocation] = useState<Location>('fridge');
   const [date, setDate] = useState<string>('');
 
-  const supported = hasBarcodeDetector();
+  const supported = isBarcodeSupported();
 
   // Запуск камеры
   useEffect(() => {
@@ -84,9 +92,16 @@ export function BarcodeScanner() {
 
     let animId: number;
     let isDetecting = false;
+    let lastScan = 0;
 
-    async function tick() {
-      if (videoRef.current && videoRef.current.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && !isDetecting) {
+    async function tick(now: number) {
+      if (
+        videoRef.current &&
+        videoRef.current.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+        !isDetecting &&
+        now - lastScan > 200
+      ) {
+        lastScan = now;
         isDetecting = true;
         try {
           const code = await detectBarcode(videoRef.current);
@@ -123,7 +138,22 @@ export function BarcodeScanner() {
         setLocation(p.location || 'fridge');
         setDate(p.expiresAt || '');
       } else {
-        toast(`Штрихкод ${code} не найден`);
+        setProduct({
+          barcode: code,
+          name: '',
+          productKey: null,
+          category: 'other',
+          location: 'fridge',
+          qty: 1,
+          unit: 'pcs',
+          expiresAt: null,
+          isEstimate: false,
+        });
+        setName('');
+        setQty(1);
+        setUnit('pcs');
+        setLocation('fridge');
+        toast(`Штрихкод ${code} считан. Введите название.`);
       }
     } catch {
       toast('Не удалось загрузить данные о товаре');
@@ -136,12 +166,45 @@ export function BarcodeScanner() {
   async function handlePhotoFile(file: File) {
     setBusy(true);
     try {
+      // 1. Сначала пробуем распознать штрихкод (ZXing)
       const code = await detectBarcodeFromBlob(file);
       if (code) {
         await handleBarcodeFound(code);
-      } else {
-        toast('На фото не удалось различить штрихкод');
+        return;
       }
+
+      // 2. Если полосы штрихкода не распознались, запускаем нейросеть по фото упаковки
+      try {
+        const imagePart = await toImagePart(file);
+        const res = await recognize({ task: 'shelf', today: todayISO(), images: [imagePart] });
+        if (res.items && res.items.length > 0) {
+          const first = res.items[0];
+          const productKey = first.product_key || guessProductKey(first.name);
+          const matched = getProduct(productKey);
+          setProduct({
+            barcode: 'фото',
+            name: first.name,
+            productKey,
+            category: first.category || matched?.category || 'other',
+            location: first.location || matched?.location || 'fridge',
+            qty: first.qty || 1,
+            unit: (first.unit as BaseUnit) || 'pcs',
+            expiresAt: first.expires_at || null,
+            isEstimate: !first.expires_at,
+          });
+          setName(first.name);
+          setQty(first.qty || 1);
+          setUnit((first.unit as BaseUnit) || 'pcs');
+          setLocation(first.location || matched?.location || 'fridge');
+          setDate(first.expires_at || '');
+          toast(`Распознан: ${first.name}`);
+          return;
+        }
+      } catch {
+        // Fallback
+      }
+
+      toast('Не удалось распознать штрихкод. Поднесите ближе или введите вручную.');
     } catch {
       toast('Ошибка обработки фото');
     } finally {

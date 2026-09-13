@@ -1,3 +1,8 @@
+import {
+  BarcodeFormat,
+  BrowserMultiFormatReader,
+  DecodeHintType,
+} from '@zxing/library';
 import type { Nutriments } from '../data/types';
 import { estimateExpiry } from '../shared/freshness';
 import { getProduct, guessProductKey, type Category, type Location } from '../shared/products';
@@ -20,6 +25,123 @@ export interface ScannedProduct {
 
 const CACHE = new Map<string, ScannedProduct>();
 
+// Настройка ZXing для чтения всех популярных форматов штрихкодов в магазинах
+const hints = new Map();
+hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+  BarcodeFormat.EAN_13,
+  BarcodeFormat.EAN_8,
+  BarcodeFormat.UPC_A,
+  BarcodeFormat.UPC_E,
+  BarcodeFormat.CODE_128,
+  BarcodeFormat.CODE_39,
+  BarcodeFormat.QR_CODE,
+]);
+hints.set(DecodeHintType.TRY_HARDER, true);
+
+let zxingReader: BrowserMultiFormatReader | null = null;
+
+export function getZXingReader(): BrowserMultiFormatReader {
+  if (!zxingReader) {
+    zxingReader = new BrowserMultiFormatReader(hints);
+  }
+  return zxingReader;
+}
+
+export function hasBarcodeDetector(): boolean {
+  return typeof window !== 'undefined' && 'BarcodeDetector' in window;
+}
+
+/** Проверяет, поддерживается ли сканирование штрихкодов (с ZXing поддерживается везде) */
+export function isBarcodeSupported(): boolean {
+  return true;
+}
+
+/** Декодирует штрихкод из видеопотока или элемента */
+export async function detectBarcode(
+  source: HTMLVideoElement | HTMLImageElement
+): Promise<string | null> {
+  // 1. Сначала пробуем нативный BarcodeDetector (если поддерживается браузером, например Android Chrome)
+  if (hasBarcodeDetector()) {
+    try {
+      const Detector = (window as unknown as {
+        BarcodeDetector: new (opts: { formats: string[] }) => {
+          detect: (s: unknown) => Promise<Array<{ rawValue?: string }>>;
+        };
+      }).BarcodeDetector;
+      const detector = new Detector({
+        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'qr_code'],
+      });
+      const results = await detector.detect(source);
+      if (results && results.length > 0) {
+        for (const res of results) {
+          const val = res.rawValue?.trim();
+          if (val) return val;
+        }
+      }
+    } catch {
+      // Игнорируем и переходим к универсальному ZXing
+    }
+  }
+
+  // 2. Универсальное чтение через ZXing (работает на iPhone Safari, Mac, Windows, Firefox)
+  try {
+    const reader = getZXingReader();
+    const res = reader.decode(source);
+    if (res && res.getText()) {
+      return res.getText().trim();
+    }
+  } catch {
+    // В текущем кадре штрихкод не найден — штатная ситуация при непрерывном сканировании
+  }
+
+  return null;
+}
+
+/** Декодирует штрихкод из файла/Blob (фото с камеры или галереи) */
+export async function detectBarcodeFromBlob(blob: Blob): Promise<string | null> {
+  // 1. Попытка нативного BarcodeDetector через createImageBitmap
+  if (hasBarcodeDetector() && typeof createImageBitmap !== 'undefined') {
+    try {
+      const bitmap = await createImageBitmap(blob);
+      const Detector = (window as unknown as {
+        BarcodeDetector: new (opts: { formats: string[] }) => {
+          detect: (s: unknown) => Promise<Array<{ rawValue?: string }>>;
+        };
+      }).BarcodeDetector;
+      const detector = new Detector({
+        formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'qr_code'],
+      });
+      const results = await detector.detect(bitmap);
+      bitmap.close?.();
+      if (results && results.length > 0) {
+        for (const res of results) {
+          const val = res.rawValue?.trim();
+          if (val) return val;
+        }
+      }
+    } catch {
+      // Переходим к ZXing
+    }
+  }
+
+  // 2. Чтение через ZXing с загрузкой изображения
+  const url = URL.createObjectURL(blob);
+  try {
+    const reader = getZXingReader();
+    const res = await reader.decodeFromImageUrl(url);
+    if (res && res.getText()) {
+      return res.getText().trim();
+    }
+  } catch {
+    // ZXing не нашел штрихкод на фото
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+
+  return null;
+}
+
+/** Поиск товара по штрихкоду в базе Open Food Facts */
 export async function lookupBarcode(barcode: string, todayIso: string): Promise<ScannedProduct | null> {
   const code = barcode.trim().replace(/\D/g, '');
   if (!code) return null;
@@ -34,71 +156,71 @@ export async function lookupBarcode(barcode: string, todayIso: string): Promise<
       headers: { 'User-Agent': 'ChtoVHolodilnike/1.0 (Family Fridge Assistant)' },
     });
 
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === 1 && data.product) {
+        const p = data.product;
+        const rawName = p.product_name_ru || p.product_name || p.brands || `Товар ${code}`;
+        const brand = p.brands ? p.brands.split(',')[0].trim() : undefined;
+        const fullName = brand && !rawName.toLowerCase().includes(brand.toLowerCase())
+          ? `${rawName} (${brand})`
+          : rawName;
 
-    if (data.status === 1 && data.product) {
-      const p = data.product;
-      const rawName = p.product_name_ru || p.product_name || p.brands || `Товар ${code}`;
-      const brand = p.brands ? p.brands.split(',')[0].trim() : undefined;
-      const fullName = brand && !rawName.toLowerCase().includes(brand.toLowerCase())
-        ? `${rawName} (${brand})`
-        : rawName;
+        const category = mapCategories(p.categories_tags);
+        const productKey = guessProductKey(fullName);
+        const matchedProd = getProduct(productKey);
+        const location = matchedProd?.location ?? (category === 'frozen' ? 'freezer' : category === 'grains' ? 'pantry' : 'fridge');
+        const { qty, unit } = parseQuantity(p.quantity);
 
-      const category = mapCategories(p.categories_tags);
-      const productKey = guessProductKey(fullName);
-      const matchedProd = getProduct(productKey);
-      const location = matchedProd?.location ?? (category === 'frozen' ? 'freezer' : category === 'grains' ? 'pantry' : 'fridge');
-      const { qty, unit } = parseQuantity(p.quantity);
+        const { expiresAt, isEstimate } = estimateExpiry({
+          productKey,
+          category,
+          location,
+          purchasedAt: todayIso,
+          openedAt: null,
+          packageDate: null,
+        });
 
-      const { expiresAt, isEstimate } = estimateExpiry({
-        productKey,
-        category,
-        location,
-        purchasedAt: todayIso,
-        openedAt: null,
-        packageDate: null,
-      });
+        const n = p.nutriments || {};
+        const rawKcal = n['energy-kcal_100g'] ?? n['energy-kcal'] ?? n['energy-kcal_value'];
+        const rawProteins = n['proteins_100g'] ?? n['proteins_value'];
+        const rawFat = n['fat_100g'] ?? n['fat_value'];
+        const rawCarbs = n['carbohydrates_100g'] ?? n['carbohydrates_value'];
 
-      const n = p.nutriments || {};
-      const rawKcal = n['energy-kcal_100g'] ?? n['energy-kcal'] ?? n['energy-kcal_value'];
-      const rawProteins = n['proteins_100g'] ?? n['proteins_value'];
-      const rawFat = n['fat_100g'] ?? n['fat_value'];
-      const rawCarbs = n['carbohydrates_100g'] ?? n['carbohydrates_value'];
+        const nutriments: Nutriments | undefined =
+          rawKcal !== undefined || rawProteins !== undefined
+            ? {
+                kcal: rawKcal !== undefined ? Math.round(Number(rawKcal)) : undefined,
+                proteins: rawProteins !== undefined ? Math.round(Number(rawProteins) * 10) / 10 : undefined,
+                fat: rawFat !== undefined ? Math.round(Number(rawFat) * 10) / 10 : undefined,
+                carbs: rawCarbs !== undefined ? Math.round(Number(rawCarbs) * 10) / 10 : undefined,
+              }
+            : undefined;
 
-      const nutriments: Nutriments | undefined =
-        rawKcal !== undefined || rawProteins !== undefined
-          ? {
-              kcal: rawKcal !== undefined ? Math.round(Number(rawKcal)) : undefined,
-              proteins: rawProteins !== undefined ? Math.round(Number(rawProteins) * 10) / 10 : undefined,
-              fat: rawFat !== undefined ? Math.round(Number(rawFat) * 10) / 10 : undefined,
-              carbs: rawCarbs !== undefined ? Math.round(Number(rawCarbs) * 10) / 10 : undefined,
-            }
-          : undefined;
+        const item: ScannedProduct = {
+          barcode: code,
+          name: fullName,
+          brand,
+          productKey,
+          category,
+          location,
+          qty,
+          unit,
+          imageUrl: p.image_url,
+          expiresAt,
+          isEstimate,
+          nutriments,
+        };
 
-      const item: ScannedProduct = {
-        barcode: code,
-        name: fullName,
-        brand,
-        productKey,
-        category,
-        location,
-        qty,
-        unit,
-        imageUrl: p.image_url,
-        expiresAt,
-        isEstimate,
-        nutriments,
-      };
-
-      CACHE.set(code, item);
-      return item;
+        CACHE.set(code, item);
+        return item;
+      }
     }
   } catch {
-    // Сеть недоступна или продукта нет в каталоге
+    // Сеть недоступна
   }
 
-  // Заглушка, если продукт не найден
+  // Заглушка, если продукт не найден в Open Food Facts
   const fallbackKey = guessProductKey(code);
   const fallbackProd = getProduct(fallbackKey);
   const category = fallbackProd?.category ?? 'other';
@@ -125,46 +247,6 @@ export async function lookupBarcode(barcode: string, todayIso: string): Promise<
   };
 
   return fallback;
-}
-
-export function hasBarcodeDetector(): boolean {
-  return typeof window !== 'undefined' && 'BarcodeDetector' in window;
-}
-
-export async function detectBarcode(
-  source: ImageBitmapSource | HTMLVideoElement | HTMLImageElement | HTMLCanvasElement
-): Promise<string | null> {
-  if (!hasBarcodeDetector()) return null;
-  try {
-    const Detector = (window as any).BarcodeDetector;
-    const detector = new Detector({
-      formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'qr_code'],
-    });
-    const results = await detector.detect(source);
-    if (results && results.length > 0) {
-      for (const res of results) {
-        const val = res.rawValue?.trim();
-        if (val) return val;
-      }
-    }
-  } catch {
-    // detector failed
-  }
-  return null;
-}
-
-export async function detectBarcodeFromBlob(blob: Blob): Promise<string | null> {
-  try {
-    if (typeof createImageBitmap !== 'undefined') {
-      const bitmap = await createImageBitmap(blob);
-      const code = await detectBarcode(bitmap);
-      bitmap.close?.();
-      return code;
-    }
-  } catch {
-    // bitmap creation failed
-  }
-  return null;
 }
 
 export function parseQuantity(raw?: string): { qty: number; unit: ItemUnit } {

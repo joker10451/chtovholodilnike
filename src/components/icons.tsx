@@ -57,3 +57,9 @@ export const IconSwap = (p: P) => (
     <path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
   </svg>
 );
+export const IconMicrophone = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8" />
+  </svg>
+);

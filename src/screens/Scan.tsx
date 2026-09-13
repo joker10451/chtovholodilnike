@@ -7,8 +7,9 @@ import type { ScanJob, ScanMode } from '../data/types';
 import { shrinkPhoto } from '../lib/image';
 import { go, href } from '../router';
 import { BarcodeScanner } from './BarcodeScanner';
+import { VoiceScanner } from './VoiceScanner';
 
-const MAX_PHOTOS: Record<ScanMode, number> = { shelf: 6, barcode: 1, receipt: 4 };
+const MAX_PHOTOS: Record<ScanMode, number> = { shelf: 6, barcode: 1, voice: 0, receipt: 4 };
 
 export function Scan() {
   const online = useOnline();
@@ -50,6 +51,8 @@ export function Scan() {
         sub={
           mode === 'barcode'
             ? 'Мгновенное распознавание продуктов по штрихкоду'
+            : mode === 'voice'
+            ? 'Назовите продукты голосом или вставьте списком'
             : mode === 'shelf'
             ? 'Сфотографируйте каждую полку по очереди'
             : 'Сфотографируйте чек целиком, чтобы был виден весь список'
@@ -61,12 +64,15 @@ export function Scan() {
         options={[
           { value: 'shelf', label: 'Полки' },
           { value: 'barcode', label: 'Штрихкод' },
+          { value: 'voice', label: 'Голос' },
           { value: 'receipt', label: 'Чек' },
         ]}
       />
 
       {mode === 'barcode' ? (
         <BarcodeScanner />
+      ) : mode === 'voice' ? (
+        <VoiceScanner />
       ) : (
         <div className="stack-lg">
           {photos.length > 0 && (

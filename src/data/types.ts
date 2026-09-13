@@ -82,7 +82,7 @@ export interface SyncRecord<T = unknown> {
   dirty: 0 | 1;
 }
 
-export type ScanMode = 'shelf' | 'barcode' | 'receipt';
+export type ScanMode = 'shelf' | 'barcode' | 'voice' | 'receipt';
 export type ScanStatus = 'queued' | 'processing' | 'ready' | 'error' | 'applied';
 
 /** Фото, ожидающие распознавания. Хранятся только на этом телефоне */
