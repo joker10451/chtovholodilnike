@@ -4,6 +4,7 @@
 import { getMeta, setMeta } from '../data/db';
 import { getItems } from '../data/repo';
 import { todayISO } from '../shared/dates';
+import { reportError } from './errorLog';
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
 
@@ -49,6 +50,7 @@ async function callPush(method: 'POST' | 'DELETE', body: unknown): Promise<void>
   });
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { error?: string };
+    if (res.status >= 500) reportError('push', new Error(`${method} ${res.status} ${data.error ?? ''}`.trim()));
     throw new Error(data.error ?? `Сервер уведомлений ответил ошибкой ${res.status}`);
   }
 }

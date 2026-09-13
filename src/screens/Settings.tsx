@@ -1,18 +1,13 @@
-import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { IconBack } from '../components/icons';
 import { Header, Sheet, Spinner, Stepper, toast, useOnline } from '../components/ui';
-import { db, setMeta } from '../data/db';
+import { setMeta } from '../data/db';
 import { saveSettings, useCookLog, useMeta, useSettings } from '../data/repo';
-import {
-  createHousehold, joinHousehold, sendLoginCode, signOut, syncNow, useSyncStatus, verifyLoginCode,
-} from '../data/sync';
 import { AiRequestError, recognize } from '../lib/ai';
 import { applyBackupRecords, backupFile, formatBackupDate, localRecords, parseBackupFile, saveCloudBackup } from '../lib/cloudBackup';
 import { usePwaUpdate } from '../lib/pwaUpdate';
 import { monthKey } from '../lib/stats';
 import { href } from '../router';
-import { syncConfigured } from '../lib/supabase';
 import { todayISO } from '../shared/dates';
 import { PRODUCTS } from '../shared/products';
 import { plural } from './Fridge';
@@ -113,8 +108,6 @@ export function Settings() {
           </a>
         </section>
 
-        <SyncSection />
-
         <NotificationsSection />
 
         <section className="stack">
@@ -189,103 +182,6 @@ function StaplesSheet({ open, onClose, selected }: { open: boolean; onClose: () 
   );
 }
 
-function SyncSection() {
-  const meta = useMeta();
-  const pending = useLiveQuery(() => db.records.where('dirty').equals(1).count(), []) ?? 0;
-  const status = useSyncStatus();
-  const online = useOnline();
-  const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
-  const [codeSent, setCodeSent] = useState(false);
-  const [houseName, setHouseName] = useState('Наш дом');
-  const [invite, setInvite] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function run(fn: () => Promise<void>) {
-    setBusy(true);
-    setError(null);
-    try { await fn(); } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
-  }
-
-  // Синхронизация нужна только для двух телефонов; без неё данные живут на этом телефоне и в резервной копии
-  if (!syncConfigured) return null;
-
-  const lastSync = status.lastSyncAt ?? meta.lastSyncAt;
-  const pendingText = pending ? ` · не отправлено: ${pending}` : '';
-
-  return (
-    <section className="stack">
-      <div className="section-label">Общий холодильник</div>
-      <div className="card flat stack">
-        {status.state === 'signed-out' && (
-          !codeSent ? (
-            <>
-              <b>Войдите, чтобы синхронизировать телефоны</b>
-              <p className="small muted">Пришлём код на почту. Пароль не нужен.</p>
-              <input className="input" type="email" inputMode="email" autoComplete="email" placeholder="Почта" value={email} onChange={(e) => setEmail(e.target.value)} />
-              <button className="btn block" disabled={busy || !online || !email.includes('@')} onClick={() => run(async () => { await sendLoginCode(email); setCodeSent(true); })}>
-                {busy && <Spinner />} Получить код
-              </button>
-            </>
-          ) : (
-            <>
-              <b>Введите код из письма</b>
-              <p className="small muted">Отправили на {email}.</p>
-              <input className="input mono" inputMode="numeric" autoComplete="one-time-code" placeholder="Код" value={otp} onChange={(e) => setOtp(e.target.value)} />
-              <button className="btn block" disabled={busy || otp.trim().length < 6} onClick={() => run(() => verifyLoginCode(email, otp))}>
-                {busy && <Spinner />} Войти
-              </button>
-              <button className="btn quiet" onClick={() => { setCodeSent(false); setOtp(''); }}>Другая почта</button>
-            </>
-          )
-        )}
-
-        {status.state === 'no-household' && (
-          <>
-            <b>Создайте дом или присоединитесь</b>
-            <p className="small muted">Первый телефон создаёт дом, второй вводит код приглашения.</p>
-            <div className="row-gap">
-              <input className="input" value={houseName} onChange={(e) => setHouseName(e.target.value)} aria-label="Название дома" />
-              <button className="btn small" style={{ minHeight: 46 }} disabled={busy || !online} onClick={() => run(() => createHousehold(houseName))}>Создать</button>
-            </div>
-            <div className="row-gap">
-              <input className="input mono" placeholder="Код приглашения" value={invite} onChange={(e) => setInvite(e.target.value.toUpperCase())} maxLength={6} />
-              <button className="btn small ghost" style={{ minHeight: 46 }} disabled={busy || !online || invite.length < 6} onClick={() => run(() => joinHousehold(invite))}>Войти в дом</button>
-            </div>
-            <button className="btn quiet" onClick={() => void signOut()}>Выйти из аккаунта</button>
-          </>
-        )}
-
-        {meta.householdId && status.state !== 'signed-out' && status.state !== 'no-household' && (
-          <>
-            <div className="row-gap">
-              <div className="grow">
-                <b>{meta.householdName}</b>
-                <div className="small muted">
-                  {status.state === 'syncing' && 'Синхронизирую…'}
-                  {status.state === 'idle' && (lastSync ? `Синхронизировано в ${new Date(lastSync).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : 'Синхронизировано')}{pendingText}
-                  {status.state === 'offline' && 'Нет интернета — изменения отправятся позже'}
-                  {status.state === 'error' && <span style={{ color: 'var(--bad)' }}>Ошибка: {status.error}</span>}
-                </div>
-              </div>
-              <button className="btn small ghost" disabled={status.state === 'syncing'} onClick={() => void syncNow()}>Обновить</button>
-            </div>
-            {meta.inviteCode && (
-              <div className="notice info">
-                <span>Код для второго телефона</span>
-                <b className="mono" style={{ fontSize: 26, letterSpacing: '.12em' }}>{meta.inviteCode}</b>
-              </div>
-            )}
-            <button className="btn quiet" onClick={() => { if (confirm('Выйти? Данные останутся на телефоне, но перестанут синхронизироваться.')) void signOut(); }}>Выйти</button>
-          </>
-        )}
-        {error && <div className="notice error">{error}</div>}
-      </div>
-    </section>
-  );
-}
-
 function BackupSection() {
   const meta = useMeta();
   const online = useOnline();
@@ -332,7 +228,6 @@ function BackupSection() {
       if (!confirm(`Восстановить копию? В ней продуктов: ${products}, всего записей: ${records.length}. Совпадающие записи на телефоне заменятся.`)) return;
       await applyBackupRecords(records);
       toast(`Восстановлено записей: ${records.length}`);
-      void syncNow();
     } catch {
       toast('Это не файл резервной копии приложения');
     }

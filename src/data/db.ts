@@ -31,11 +31,6 @@ export const db = openDb('holodilnik');
 export const DEFAULT_META: DeviceMeta = {
   onboarded: false,
   accessCode: '',
-  householdId: null,
-  householdName: null,
-  inviteCode: null,
-  syncCursor: null,
-  lastSyncAt: null,
   lastBackupAt: null,
 };
 

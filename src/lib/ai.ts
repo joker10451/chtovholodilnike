@@ -4,6 +4,7 @@ import {
   GeneratedRecipeSchema, PackageSchema, RecognitionSchema,
   type AiRequest, type GeneratedRecipe, type PackageInfo, type Recognition,
 } from '../shared/aiSchemas';
+import { reportError } from './errorLog';
 
 export class OfflineError extends Error {
   constructor() {
@@ -92,10 +93,15 @@ async function call<T extends z.ZodType>(body: AiRequest, schema: T): Promise<z.
   const res = await send(body, accessCode);
   const payload = (await res.json().catch(() => null)) as { error?: string } | null;
   if (!res.ok) {
+    // Отказы сервера и лимиты — в журнал; неверный код и некорректный ввод — это не поломка
+    if (res.status >= 429) reportError('ai', new Error(`${body.task}: ${res.status} ${payload?.error ?? ''}`.trim()));
     throw new AiRequestError(res.status, payload?.error ?? STATUS_MESSAGES[res.status] ?? `Сервер нейросети ответил ошибкой ${res.status}. Попробуйте ещё раз.`);
   }
   const parsed = schema.safeParse(payload);
-  if (!parsed.success) throw new AiRequestError(502, 'Нейросеть ответила в неожиданном формате. Попробуйте ещё раз.');
+  if (!parsed.success) {
+    reportError('ai', new Error(`${body.task}: ответ не по схеме`));
+    throw new AiRequestError(502, 'Нейросеть ответила в неожиданном формате. Попробуйте ещё раз.');
+  }
   if (key) await writeCache(key, parsed.data);
   return parsed.data;
 }

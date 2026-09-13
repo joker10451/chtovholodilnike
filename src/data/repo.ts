@@ -17,28 +17,13 @@ export const DEFAULT_SETTINGS: HouseholdSettings = {
   timeLimit: 45,
 };
 
-type Listener = () => void;
-const changeListeners = new Set<Listener>();
-
-/** Подписка на локальные изменения — синхронизация отправляет их на сервер */
-export function onLocalChange(fn: Listener): () => void {
-  changeListeners.add(fn);
-  return () => changeListeners.delete(fn);
-}
-
-function notify() {
-  changeListeners.forEach((fn) => fn());
-}
-
 export async function putRecord<T>(kind: RecordKind, id: string, data: T): Promise<void> {
   await db.records.put({ id, kind, data, updatedAt: Date.now(), deleted: 0, dirty: 1 });
-  notify();
 }
 
 export async function putRecords<T>(kind: RecordKind, rows: { id: string; data: T }[]): Promise<void> {
   const now = Date.now();
   await db.records.bulkPut(rows.map((r) => ({ id: r.id, kind, data: r.data, updatedAt: now, deleted: 0 as const, dirty: 1 as const })));
-  notify();
 }
 
 export async function deleteRecords(ids: string[]): Promise<void> {
@@ -48,7 +33,6 @@ export async function deleteRecords(ids: string[]): Promise<void> {
       await db.records.update(id, { deleted: 1, dirty: 1, updatedAt: now });
     }
   });
-  notify();
 }
 
 async function liveOf<T>(kind: RecordKind): Promise<T[]> {

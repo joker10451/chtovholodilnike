@@ -7,7 +7,6 @@ import { useItems, useMetaLoading, useShoppingList } from './data/repo';
 import { maybeAutoBackup } from './lib/cloudBackup';
 import { schedulePushUpdate } from './lib/push';
 import { processScanQueue, recoverScans } from './data/scanQueue';
-import { startSync } from './data/sync';
 import { href, useRoute } from './router';
 import { Fridge } from './screens/Fridge';
 import { Onboarding } from './screens/Onboarding';
@@ -68,7 +67,6 @@ export function App() {
   const unboughtCount = shopping?.filter((i) => !i.checked).length ?? 0;
   const items = useItems();
 
-  useEffect(() => startSync(), []);
   // Сроки для утренних уведомлений: обновляем на сервере, когда меняются продукты или вернулся интернет
   useEffect(() => { if (items) schedulePushUpdate(); }, [items]);
   // Облачная копия: проверяем вскоре после запуска и при каждом возвращении в приложение

@@ -1,10 +1,12 @@
 // Очередь фото на распознавание. Без интернета фото ждут на телефоне
 // и отправляются, как только связь появится.
 import { AiRequestError, OfflineError, recognize } from '../lib/ai';
+import { reportError } from '../lib/errorLog';
 import { toImagePart } from '../lib/image';
 import { todayISO } from '../shared/dates';
 import { db, newId } from './db';
 import type { ScanMode } from './types';
+
 
 let processing = false;
 
@@ -41,6 +43,7 @@ export async function processScanQueue(): Promise<void> {
           await db.scans.update(job.id, { status: 'queued' });
           break;
         }
+        if (!(e instanceof AiRequestError)) reportError('scan', e, job.mode);
         const message = e instanceof AiRequestError ? e.message : 'Не получилось распознать фото. Попробуйте ещё раз.';
         await db.scans.update(job.id, { status: 'error', error: message });
       }

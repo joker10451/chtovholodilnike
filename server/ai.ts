@@ -3,6 +3,7 @@ import {
   AiRequestSchema, GeneratedRecipeSchema, PackageSchema, RecognitionSchema, type AiRequest, type ImagePart,
 } from '../src/shared/aiSchemas.js';
 import { checkAccess } from './access.js';
+import { envLimit, takeQuota } from './quota.js';
 import { AiError } from './errors.js';
 import { systemPrompt, userText } from './prompts.js';
 import { generateWithClaude } from './providers/claude.js';
@@ -110,6 +111,16 @@ export async function handleAiRequest(request: Request): Promise<Response> {
   }
   const parsed = AiRequestSchema.safeParse(body);
   if (!parsed.success) return json(400, { error: 'Некорректный запрос', details: z.prettifyError(parsed.error) });
+
+  // Бесплатный лимит нейросети общий на день: не даём случайному циклу или чужому коду выбрать его за утро
+  const quota = await takeQuota('ai', { hour: envLimit('AI_HOURLY_LIMIT', 60), day: envLimit('AI_DAILY_LIMIT', 300) });
+  if (quota !== 'ok') {
+    return json(429, {
+      error: quota === 'hour'
+        ? 'Слишком много запросов к нейросети за час. Подождите немного и попробуйте снова.'
+        : 'Дневной лимит запросов к нейросети исчерпан. Завтра всё заработает снова.',
+    });
+  }
 
   try {
     return json(200, await run(parsed.data));

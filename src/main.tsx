@@ -16,8 +16,10 @@ import './styles.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { installErrorLog } from './lib/errorLog';
 import { initPwa } from './lib/pwaUpdate';
 
+installErrorLog();
 // Инициализация регистрации Service Worker с отслеживанием обновлений
 initPwa();
 

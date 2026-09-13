@@ -3,6 +3,7 @@
 import { db, getMeta, setMeta } from '../data/db';
 import type { SyncRecord } from '../data/types';
 import { BackupCodeError, openBackup, sealBackup } from './backupCodec';
+import { reportError } from './errorLog';
 
 export { BackupCodeError };
 
@@ -115,8 +116,9 @@ export async function maybeAutoBackup(): Promise<void> {
     if (fresh && records.length < latest.records / 2 && latest.records - records.length > 10) return;
 
     await saveCloudBackup();
-  } catch {
-    // Повторим при следующем запуске
+  } catch (e) {
+    // Повторим при следующем запуске; сетевые сбои журнал отбросит сам
+    reportError('backup', e, 'автокопия');
   } finally {
     running = false;
   }

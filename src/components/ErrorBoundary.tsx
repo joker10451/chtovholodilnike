@@ -1,4 +1,5 @@
-import { Component, type ReactNode } from 'react';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { reportError } from '../lib/errorLog';
 
 /** Устаревший кусок приложения после обновления: сервер уже отдаёт новую версию */
 function isChunkError(error: Error): boolean {
@@ -17,9 +18,12 @@ export class ErrorBoundary extends Component<{ children: ReactNode; resetKey: st
     return { error };
   }
 
-  componentDidCatch(error: Error) {
+  componentDidCatch(error: Error, info: ErrorInfo) {
     console.error(error);
-    if (isChunkError(error)) {
+    if (!isChunkError(error)) {
+      const where = info.componentStack?.trim().split('\n')[0]?.replace(/^at\s+/, '').split(' ')[0];
+      reportError('crash', error, where ? `экран упал в ${where}` : 'экран упал');
+    } else {
       // Один раз перезагружаем сами — обычно после этого открывается новая версия
       try {
         if (sessionStorage.getItem(RELOAD_KEY) !== '1') {

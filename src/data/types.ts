@@ -28,7 +28,7 @@ export interface InventoryItem {
   nutriments?: Nutriments;
 }
 
-/** Общие настройки дома — синхронизируются между телефонами */
+/** Настройки семьи: порции, время на готовку, запасы, рацион */
 export interface HouseholdSettings {
   servings: number;
   staples: string[];
@@ -92,7 +92,7 @@ export interface PlannedMeal {
 
 export type RecordKind = 'item' | 'recipe' | 'settings' | 'cooklog' | 'shopping' | 'plan' | 'barcode' | 'waste';
 
-/** Любая синхронизируемая запись. dirty = 1 — ещё не отправлена на сервер */
+/** Любая запись приложения. dirty — поле от прежней синхронизации, оставлено ради совместимости базы на телефоне */
 export interface SyncRecord<T = unknown> {
   id: string;
   kind: RecordKind;
@@ -121,11 +121,6 @@ export interface ScanJob {
 export interface DeviceMeta {
   onboarded: boolean;
   accessCode: string;
-  householdId: string | null;
-  householdName: string | null;
-  inviteCode: string | null;
-  syncCursor: string | null;
-  lastSyncAt: number | null;
   /** Когда последний раз сохраняли резервную копию в файл */
   lastBackupAt: number | null;
   /** Последние сроки, отправленные серверу уведомлений — чтобы не слать одно и то же */
