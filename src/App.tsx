@@ -3,7 +3,8 @@ import { IconBook, IconCal, IconCart, IconFridge, IconScan } from './components/
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Spinner, ToastHost, useOnline } from './components/ui';
 import { UpdatePrompt } from './components/UpdatePrompt';
-import { useMetaLoading, useShoppingList } from './data/repo';
+import { useItems, useMetaLoading, useShoppingList } from './data/repo';
+import { schedulePushUpdate } from './lib/push';
 import { processScanQueue, recoverScans } from './data/scanQueue';
 import { startSync } from './data/sync';
 import { href, useRoute } from './router';
@@ -61,8 +62,16 @@ export function App() {
   const online = useOnline();
   const shopping = useShoppingList();
   const unboughtCount = shopping?.filter((i) => !i.checked).length ?? 0;
+  const items = useItems();
 
   useEffect(() => startSync(), []);
+  // Сроки для утренних уведомлений: обновляем на сервере, когда меняются продукты или вернулся интернет
+  useEffect(() => { if (items) schedulePushUpdate(); }, [items]);
+  useEffect(() => {
+    const onOnline = () => schedulePushUpdate(1000);
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, []);
   useEffect(() => {
     preloadScreens();
     try { sessionStorage.removeItem('holodilnik:chunk-reload'); } catch { /* недоступно */ }

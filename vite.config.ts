@@ -7,6 +7,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 const DEV_ROUTES: Record<string, [string, string]> = {
   '/api/ai': ['/server/ai.ts', 'handleAiRequest'],
   '/api/barcode': ['/server/barcode.ts', 'handleBarcodeRequest'],
+  '/api/push': ['/server/push.ts', 'handlePushRequest'],
 };
 
 /** В режиме разработки отвечает на /api/* тем же кодом, что и функции на Vercel */

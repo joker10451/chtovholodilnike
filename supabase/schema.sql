@@ -1,4 +1,5 @@
--- Схема для синхронизации «Что в холодильнике».
+-- Схема для синхронизации «Что в холодильнике» между двумя телефонами. Необязательно:
+-- одному телефону она не нужна. Для уведомлений о сроках достаточно supabase/push.sql.
 -- Выполните целиком в Supabase: SQL Editor → New query → Run.
 
 -- Дом (семья) и его участники
@@ -34,6 +35,7 @@ create index if not exists records_sync_idx on public.records (household_id, syn
 create or replace function public.records_last_write_wins()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   if tg_op = 'UPDATE' and new.updated_at < old.updated_at then
@@ -150,9 +152,13 @@ as $$
   limit 1;
 $$;
 
-revoke all on function public.create_household(text) from anon;
-revoke all on function public.join_household(text) from anon;
-revoke all on function public.my_household() from anon;
+-- Функции дома — только для вошедших (по умолчанию Postgres разрешает их всем через public)
+revoke execute on function public.create_household(text) from public, anon;
+revoke execute on function public.join_household(text) from public, anon;
+revoke execute on function public.my_household() from public, anon;
+grant execute on function public.create_household(text) to authenticated;
+grant execute on function public.join_household(text) to authenticated;
+grant execute on function public.my_household() to authenticated;
 
 -- Мгновенные обновления между телефонами
 do $$
@@ -167,24 +173,3 @@ $$;
 alter table public.records drop constraint if exists records_kind_check;
 alter table public.records add constraint records_kind_check
   check (kind in ('item', 'recipe', 'settings', 'cooklog', 'shopping', 'plan', 'barcode'));
-
--- Уведомления о сроках: подписки телефонов на push.
--- Рассылает серверная функция api/cron/expiry по расписанию из vercel.json.
-create table if not exists public.push_subscriptions (
-  id uuid primary key default gen_random_uuid(),
-  household_id uuid not null references public.households(id) on delete cascade,
-  user_id uuid not null references auth.users(id) on delete cascade,
-  endpoint text not null unique,
-  p256dh text not null,
-  auth text not null,
-  time_zone text not null default 'Europe/Moscow',
-  last_sent_on date,
-  created_at timestamptz not null default now()
-);
-
-alter table public.push_subscriptions enable row level security;
-
-drop policy if exists "own push subscriptions" on public.push_subscriptions;
-create policy "own push subscriptions" on public.push_subscriptions
-  for all using (user_id = auth.uid())
-  with check (user_id = auth.uid() and public.is_household_member(household_id));

@@ -193,17 +193,8 @@ function SyncSection() {
     try { await fn(); } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
 
-  if (!syncConfigured) {
-    return (
-      <section className="stack">
-        <div className="section-label">Общий холодильник</div>
-        <div className="card flat stack">
-          <b>Пока только на этом телефоне</b>
-          <p className="small muted">Продукты, рецепты и покупки сейчас хранятся только на этом телефоне. Перенести их на другой телефон можно через резервную копию ниже.</p>
-        </div>
-      </section>
-    );
-  }
+  // Синхронизация нужна только для двух телефонов; без неё данные живут на этом телефоне и в резервной копии
+  if (!syncConfigured) return null;
 
   const lastSync = status.lastSyncAt ?? meta.lastSyncAt;
   const pendingText = pending ? ` · не отправлено: ${pending}` : '';

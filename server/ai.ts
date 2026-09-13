@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   AiRequestSchema, GeneratedRecipeSchema, PackageSchema, RecognitionSchema, type AiRequest, type ImagePart,
 } from '../src/shared/aiSchemas.js';
+import { checkAccess } from './access.js';
 import { AiError } from './errors.js';
 import { systemPrompt, userText } from './prompts.js';
 import { generateWithClaude } from './providers/claude.js';
@@ -14,16 +15,6 @@ function json(status: number, body: unknown): Response {
     status,
     headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
   });
-}
-
-/** Клиент кодирует код доступа через encodeURIComponent — он может быть на кириллице */
-function decodeHeader(value: string | null): string | null {
-  if (value === null) return null;
-  try {
-    return decodeURIComponent(value).trim();
-  } catch {
-    return value.trim();
-  }
 }
 
 function isPrivateHost(hostname: string): boolean {
@@ -108,13 +99,8 @@ async function run(req: AiRequest): Promise<unknown> {
 export async function handleAiRequest(request: Request): Promise<Response> {
   if (request.method !== 'POST') return json(405, { error: 'Используйте POST' });
 
-  const accessCode = process.env.APP_ACCESS_CODE;
-  if (!accessCode && process.env.VERCEL) {
-    return json(500, { error: 'На сервере не задан APP_ACCESS_CODE. Без него нейросетью сможет пользоваться кто угодно.' });
-  }
-  if (accessCode && decodeHeader(request.headers.get('x-access-code')) !== accessCode.trim()) {
-    return json(401, { error: 'Неверный код доступа. Проверьте его в настройках приложения.' });
-  }
+  const denied = checkAccess(request);
+  if (denied) return denied;
 
   let body: unknown;
   try {

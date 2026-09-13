@@ -116,4 +116,6 @@ export interface DeviceMeta {
   lastSyncAt: number | null;
   /** Когда последний раз сохраняли резервную копию в файл */
   lastBackupAt: number | null;
+  /** Последние сроки, отправленные серверу уведомлений — чтобы не слать одно и то же */
+  pushScheduleHash?: string | null;
 }

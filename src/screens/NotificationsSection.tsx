@@ -1,17 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Spinner, toast } from '../components/ui';
-import { useMeta } from '../data/repo';
 import { currentSubscription, disablePush, enablePush, pushAvailability, type PushAvailability } from '../lib/push';
 
 const EXPLAIN: Record<Exclude<PushAvailability, 'ready'>, string> = {
-  'not-configured': 'Заработают, когда подключим общий холодильник: утром придёт «Сегодня последний день: кефир» с рецептами.',
+  'not-configured': 'Пока не настроены на сервере. Когда настроим, утром будет приходить «Сегодня последний день: кефир» с рецептами.',
   'install-first': 'Добавьте приложение на экран «Домой»: iPhone показывает уведомления только установленным приложениям.',
-  'no-household': 'Подключите общий холодильник выше — уведомления приходят по его продуктам.',
   unsupported: 'Этот браузер не умеет показывать уведомления.',
 };
 
 export function NotificationsSection() {
-  const meta = useMeta();
   const [availability, setAvailability] = useState<PushAvailability | null>(null);
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -27,7 +24,7 @@ export function NotificationsSection() {
       }
     })();
     return () => { cancelled = true; };
-  }, [meta.householdId]);
+  }, []);
 
   async function toggle() {
     setBusy(true);
