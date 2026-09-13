@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { IconBook, IconChef, IconFridge, IconMore, IconScan } from './components/icons';
+import { IconBook, IconCart, IconChef, IconFridge, IconScan } from './components/icons';
 import { ToastHost } from './components/ui';
-import { useMetaLoading } from './data/repo';
+import { useMetaLoading, useShoppingList } from './data/repo';
 import { processScanQueue, recoverScans } from './data/scanQueue';
 import { startSync } from './data/sync';
 import { href, useRoute } from './router';
@@ -15,14 +15,25 @@ import { Recipes } from './screens/Recipes';
 import { Review } from './screens/Review';
 import { Scan } from './screens/Scan';
 import { Settings } from './screens/Settings';
+import { Shopping } from './screens/Shopping';
 
 const TAB_OF: Record<string, string> = {
-  fridge: 'fridge', recipes: 'recipes', recipe: 'recipes', catalog: 'recipes', scan: 'scan', review: 'scan', chef: 'chef', settings: 'settings',
+  fridge: 'fridge',
+  recipes: 'recipes',
+  recipe: 'recipes',
+  catalog: 'recipes',
+  scan: 'scan',
+  review: 'scan',
+  shopping: 'shopping',
+  chef: 'chef',
+  settings: 'chef',
 };
 
 export function App() {
   const meta = useMetaLoading();
   const route = useRoute();
+  const shopping = useShoppingList();
+  const unboughtCount = shopping?.filter((i) => !i.checked).length ?? 0;
 
   useEffect(() => startSync(), []);
   useEffect(() => {
@@ -44,6 +55,7 @@ export function App() {
     case 'catalog': screen = <Catalog />; break;
     case 'scan': screen = <Scan />; break;
     case 'review': screen = <Review id={param} />; break;
+    case 'shopping': screen = <Shopping />; break;
     case 'chef': screen = <Chef />; break;
     case 'settings': screen = <Settings />; break;
     default: screen = <Fridge />;
@@ -56,11 +68,49 @@ export function App() {
       {screen}
       {showTabs && (
         <nav className="tabbar" aria-label="Разделы">
-          <a className={`tab${tab === 'fridge' ? ' on' : ''}`} href={href('fridge')}><IconFridge />Холодильник</a>
-          <a className={`tab${tab === 'recipes' ? ' on' : ''}`} href={href('recipes')}><IconBook />Рецепты</a>
-          <div className="fab-wrap"><a className="fab" href={href('scan')} aria-label="Скан"><IconScan /></a></div>
-          <a className={`tab${tab === 'chef' ? ' on' : ''}`} href={href('chef')}><IconChef />Шеф</a>
-          <a className={`tab${tab === 'settings' ? ' on' : ''}`} href={href('settings')}><IconMore />Настройки</a>
+          <a className={`tab${tab === 'fridge' ? ' on' : ''}`} href={href('fridge')}>
+            <IconFridge />
+            Холодильник
+          </a>
+          <a className={`tab${tab === 'recipes' ? ' on' : ''}`} href={href('recipes')}>
+            <IconBook />
+            Рецепты
+          </a>
+          <div className="fab-wrap">
+            <a className="fab" href={href('scan')} aria-label="Скан">
+              <IconScan />
+            </a>
+          </div>
+          <a className={`tab${tab === 'shopping' ? ' on' : ''}`} href={href('shopping')} style={{ position: 'relative' }}>
+            <IconCart />
+            Покупки
+            {unboughtCount > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 2,
+                  right: 'calc(50% - 16px)',
+                  background: 'var(--brand)',
+                  color: '#fff',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  height: 16,
+                  minWidth: 16,
+                  padding: '0 4px',
+                  borderRadius: 999,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {unboughtCount}
+              </span>
+            )}
+          </a>
+          <a className={`tab${tab === 'chef' ? ' on' : ''}`} href={href('chef')}>
+            <IconChef />
+            Шеф
+          </a>
         </nav>
       )}
       <ToastHost />

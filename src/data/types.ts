@@ -34,7 +34,19 @@ export interface CookLogEntry {
   cookedAt: number;
 }
 
-export type RecordKind = 'item' | 'recipe' | 'settings' | 'cooklog';
+export interface ShoppingItem {
+  id: string;
+  name: string;
+  productKey: string | null;
+  category: Category;
+  qty: number;
+  unit: ItemUnit;
+  checked: boolean;
+  recipeTitle?: string;
+  createdAt: number;
+}
+
+export type RecordKind = 'item' | 'recipe' | 'settings' | 'cooklog' | 'shopping';
 
 /** Любая синхронизируемая запись. dirty = 1 — ещё не отправлена на сервер */
 export interface SyncRecord<T = unknown> {

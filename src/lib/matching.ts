@@ -109,7 +109,8 @@ export function matchRecipe(ctx: MatchContext, recipe: Recipe, portions = recipe
     weightSum += w;
     covered += w * m.coverage;
   }
-  const coverage = weightSum ? covered / weightSum : 1;
+  // Если в холодильнике ничего нет, процент покрытия блюда из холодильника равен 0
+  const coverage = ctx.items.length === 0 ? 0 : (weightSum ? covered / weightSum : 1);
 
   const missing = ingredients.filter((m) => m.ingredient.role !== 'basic' && (m.state === 'missing' || (m.state === 'partial' && m.coverage < 0.5)));
   const missingKey = missing.filter((m) => m.ingredient.role === 'key').length;
@@ -123,7 +124,8 @@ export function matchRecipe(ctx: MatchContext, recipe: Recipe, portions = recipe
   return { recipe, score, coverage, ingredients, missing, missingKey, rescueItemIds };
 }
 
-export function onShelf(m: RecipeMatch, shelf: Shelf): boolean {
+export function onShelf(m: RecipeMatch, shelf: Shelf, hasItems = true): boolean {
+  if (!hasItems && shelf !== 'all') return false;
   switch (shelf) {
     case 'rescue': return m.rescueItemIds.length > 0 && m.missingKey === 0 && m.missing.length <= 2;
     case 'ready': return m.missingKey === 0;

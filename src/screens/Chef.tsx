@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { IconCamera, IconSpark } from '../components/icons';
+import { IconCamera, IconMore, IconSpark } from '../components/icons';
 import { Header, Plate, Segmented, Spinner, toast, useOnline } from '../components/ui';
 import { getItems, getSettings, saveRecipe } from '../data/repo';
 import { AiRequestError, generateRecipe } from '../lib/ai';
@@ -24,7 +24,15 @@ export function Chef() {
 
   return (
     <main className="screen">
-      <Header title="Шеф" sub="Нейросеть придумывает и переводит рецепты" />
+      <Header
+        title="Шеф"
+        sub="Нейросеть придумывает и переводит рецепты"
+        right={
+          <a className="icon-btn" href={href('settings')} aria-label="Настройки">
+            <IconMore width={18} height={18} />
+          </a>
+        }
+      />
       <Segmented<Mode> value={mode} onChange={(m) => { setMode(m); setResult(null); }} options={[
         { value: 'invent', label: 'Придумать из продуктов' },
         { value: 'import', label: 'Импорт рецепта' },

@@ -17,3 +17,20 @@ export const IconGlobe = (p: P) => (<svg {...base} {...p}><circle cx="12" cy="12
 export const IconTimer = (p: P) => (<svg {...base} {...p}><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2M9 2.5h6" /></svg>);
 export const IconCheck = (p: P) => (<svg {...base} strokeWidth={2.6} {...p}><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>);
 export const IconSync = (p: P) => (<svg {...base} {...p}><path d="M20 8a8 8 0 0 0-14.5-2M4 16a8 8 0 0 0 14.5 2" /><path d="M20 3v5h-5M4 21v-5h5" /></svg>);
+export const IconCart = (p: P) => (
+  <svg {...base} {...p}>
+    <circle cx="9" cy="20" r="1.5" />
+    <circle cx="17" cy="20" r="1.5" />
+    <path d="M2.5 3.5h3l2.2 11.2a1.8 1.8 0 0 0 1.8 1.3h8.8a1.8 1.8 0 0 0 1.8-1.4l1.4-7.1H6.2" />
+  </svg>
+);
+export const IconTrash = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+  </svg>
+);
+export const IconShare = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v14" />
+  </svg>
+);

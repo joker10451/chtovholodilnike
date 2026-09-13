@@ -1,10 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo } from 'react';
 import { BASE_RECIPES } from '../shared/recipes';
-import { DEFAULT_STAPLES } from '../shared/products';
+import { DEFAULT_STAPLES, getProduct, guessProductKey, type Category } from '../shared/products';
+import { estimateExpiry } from '../shared/freshness';
+import type { ItemUnit } from '../shared/units';
 import type { Recipe } from '../shared/recipeTypes';
 import { db, DEFAULT_META, getMeta, newId } from './db';
-import type { CookLogEntry, DeviceMeta, HouseholdSettings, InventoryItem, RecordKind, ScanJob, SyncRecord } from './types';
+import type { CookLogEntry, DeviceMeta, HouseholdSettings, InventoryItem, RecordKind, ScanJob, ShoppingItem, SyncRecord } from './types';
 
 export const SETTINGS_ID = 'settings';
 
@@ -136,4 +138,137 @@ export function useScans(): ScanJob[] | undefined {
 
 export function useScan(id: string): ScanJob | undefined | null {
   return useLiveQuery(async () => (await db.scans.get(id)) ?? null, [id]);
+}
+
+// ——— Список покупок ———
+
+export function useShoppingList(): ShoppingItem[] | undefined {
+  return useLiveQuery(async () => {
+    const rows = await liveOf<ShoppingItem>('shopping');
+    return rows.sort((a, b) => (a.checked ? 1 : 0) - (b.checked ? 1 : 0) || b.createdAt - a.createdAt);
+  }, []);
+}
+
+export async function addShoppingItems(
+  items: Array<{
+    name: string;
+    productKey?: string | null;
+    category?: Category;
+    qty?: number;
+    unit?: ItemUnit;
+    recipeTitle?: string;
+  }>,
+): Promise<void> {
+  const existing = await liveOf<ShoppingItem>('shopping');
+  const now = Date.now();
+  const toAdd: { id: string; data: ShoppingItem }[] = [];
+
+  for (const item of items) {
+    const key = item.productKey ?? guessProductKey(item.name);
+    const prod = getProduct(key);
+    const cat = item.category ?? prod?.category ?? 'other';
+    const unit = item.unit ?? (prod?.unit as ItemUnit) ?? 'pcs';
+    const qty = item.qty ?? 1;
+
+    const duplicate = existing.find(
+      (e) => !e.checked && ((key && e.productKey === key) || e.name.toLowerCase() === item.name.toLowerCase()),
+    );
+
+    if (duplicate) {
+      await putRecord<ShoppingItem>('shopping', duplicate.id, {
+        ...duplicate,
+        qty: duplicate.qty + qty,
+        recipeTitle: item.recipeTitle
+          ? duplicate.recipeTitle
+            ? `${duplicate.recipeTitle}, ${item.recipeTitle}`
+            : item.recipeTitle
+          : duplicate.recipeTitle,
+      });
+    } else {
+      const id = newId();
+      toAdd.push({
+        id,
+        data: {
+          id,
+          name: item.name,
+          productKey: key,
+          category: cat,
+          qty,
+          unit,
+          checked: false,
+          recipeTitle: item.recipeTitle,
+          createdAt: now,
+        },
+      });
+    }
+  }
+
+  if (toAdd.length > 0) {
+    await putRecords('shopping', toAdd);
+  }
+}
+
+export async function toggleShoppingItem(id: string, checked: boolean): Promise<void> {
+  const row = await db.records.get(id);
+  if (!row || row.deleted) return;
+  const current = row.data as ShoppingItem;
+  await putRecord<ShoppingItem>('shopping', id, { ...current, checked });
+}
+
+export async function deleteShoppingItem(id: string): Promise<void> {
+  await deleteRecords([id]);
+}
+
+export async function clearCheckedShoppingItems(): Promise<void> {
+  const rows = await liveOf<ShoppingItem>('shopping');
+  const doneIds = rows.filter((r) => r.checked).map((r) => r.id);
+  if (doneIds.length > 0) {
+    await deleteRecords(doneIds);
+  }
+}
+
+export async function transferCheckedToFridge(today: string): Promise<number> {
+  const rows = await liveOf<ShoppingItem>('shopping');
+  const checked = rows.filter((r) => r.checked);
+  if (checked.length === 0) return 0;
+
+  const now = Date.now();
+  const newItems: { id: string; data: InventoryItem }[] = [];
+
+  for (const s of checked) {
+    const prod = getProduct(s.productKey);
+    const loc = prod?.location ?? 'fridge';
+    const expiry = estimateExpiry({
+      productKey: s.productKey,
+      category: s.category,
+      location: loc,
+      purchasedAt: today,
+      openedAt: null,
+      packageDate: null,
+    });
+
+    const id = newId();
+    newItems.push({
+      id,
+      data: {
+        id,
+        name: s.name,
+        productKey: s.productKey,
+        category: s.category,
+        qty: s.qty,
+        unit: s.unit,
+        location: loc,
+        purchasedAt: today,
+        openedAt: null,
+        expiresAt: expiry.expiresAt,
+        isEstimate: expiry.isEstimate,
+        source: 'manual',
+        createdAt: now,
+      },
+    });
+  }
+
+  await putRecords('item', newItems);
+  await deleteRecords(checked.map((c) => c.id));
+  return checked.length;
 }

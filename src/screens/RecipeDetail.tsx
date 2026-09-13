@@ -2,12 +2,13 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
 import { IconTimer } from '../components/icons';
 import { Header, Plate, Stepper, toast } from '../components/ui';
-import { deleteRecords, getRecipe } from '../data/repo';
+import { addShoppingItems, deleteRecords, getRecipe } from '../data/repo';
 import { useMatchContext } from '../hooks';
 import { matchRecipe, type IngredientMatch } from '../lib/matching';
 import { back, go, href } from '../router';
 import { getProduct } from '../shared/products';
-import { formatQty } from '../shared/units';
+import { formatQty, type ItemUnit } from '../shared/units';
+import { plural } from './Fridge';
 
 const MARK: Record<IngredientMatch['state'], string> = { have: '✓', sub: '⇄', staple: '✓', partial: '½', missing: '×' };
 
@@ -38,6 +39,24 @@ export function RecipeDetail({ id }: { id: string }) {
         toast('Список скопирован');
       }
     } catch { /* пользователь закрыл окно «Поделиться» */ }
+  }
+
+  async function addToShopping() {
+    if (missing.length === 0) return;
+    await addShoppingItems(
+      missing.map((m) => {
+        const prod = getProduct(m.ingredient.key);
+        return {
+          name: ingredientTitle(m),
+          productKey: m.ingredient.key,
+          category: prod?.category,
+          qty: m.ingredient.qty ? Math.ceil(m.ingredient.qty * factor) : 1,
+          unit: (m.ingredient.unit === 'pinch' ? 'pcs' : m.ingredient.unit) as ItemUnit,
+          recipeTitle: recipe!.title,
+        };
+      }),
+    );
+    toast(`${missing.length} ${plural(missing.length, 'продукт добавлен', 'продукта добавлено', 'продуктов добавлено')} в список покупок`);
   }
 
   async function remove() {
@@ -93,7 +112,14 @@ export function RecipeDetail({ id }: { id: string }) {
             ))}
           </div>
           {missing.length > 0 && (
-            <button className="btn ghost block" onClick={shareMissing}>Отправить, что купить ({missing.length})</button>
+            <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+              <button className="btn ghost block" onClick={addToShopping}>
+                + В список покупок ({missing.length})
+              </button>
+              <button className="btn plain block small" onClick={shareMissing}>
+                Поделиться списком
+              </button>
+            </div>
           )}
         </div>
 

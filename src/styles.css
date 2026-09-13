@@ -143,6 +143,8 @@ button.chip.on { background: var(--brand-soft); border-color: var(--brand); colo
 
 /* ——— Продукты ——— */
 .item-row { display: flex; align-items: center; gap: 11px; padding: 11px 12px; background: var(--surface); border: 0; width: 100%; text-align: left; }
+.item-row.checked { opacity: 0.55; }
+.item-row.checked .nm b { text-decoration: line-through; }
 .item-row .nm { flex: 1; min-width: 0; display: grid; gap: 1px; }
 .item-row .nm b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item-row .nm small { color: var(--ink-3); font-size: 12.5px; }

@@ -113,7 +113,17 @@ describe('подбор рецептов', () => {
     const m = matchRecipe(c, chickenRice);
     expect(m.ingredients[0].state).toBe('sub');
     expect(m.missingKey).toBe(1);
-    expect(onShelf(m, 'buy')).toBe(false); // не хватает риса, лука, моркови и чеснока — больше двух
+    expect(onShelf(m, 'buy', true)).toBe(false); // не хватает риса, лука, моркови и чеснока — больше двух
+  });
+
+  it('при пустом холодильнике рецепты не попадают в «Докупить» или «Всё есть»', () => {
+    const c = ctx([]); // холодильник пуст
+    const m = matchRecipe(c, chickenRice);
+    expect(m.coverage).toBe(0);
+    expect(onShelf(m, 'buy', false)).toBe(false);
+    expect(onShelf(m, 'ready', false)).toBe(false);
+    expect(onShelf(m, 'rescue', false)).toBe(false);
+    expect(onShelf(m, 'all', false)).toBe(true);
   });
 
   it('истекающие продукты поднимают рецепт выше', () => {
