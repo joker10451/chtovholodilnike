@@ -5,7 +5,7 @@ import { saveItems, useScan } from '../data/repo';
 import { retryScan } from '../data/scanQueue';
 import { draftToItem, toReviewDraft, type ReviewDraft } from '../lib/convert';
 import { go, href } from '../router';
-import { isISODate } from '../shared/dates';
+import { addDays, isISODate } from '../shared/dates';
 import { estimateExpiry } from '../shared/freshness';
 import { getProduct, LOCATION_LABELS, LOCATIONS, PRODUCTS } from '../shared/products';
 import { UNIT_LABELS, type BaseUnit } from '../shared/units';
@@ -194,10 +194,39 @@ function DraftRow({ draft: d, today, purchasedAt, onChange }: { draft: ReviewDra
               <button key={l} className={`chip${d.location === l ? ' on' : ''}`} onClick={() => onChange({ location: l })}>{LOCATION_LABELS[l]}</button>
             ))}
           </div>
-          <label className="field">
-            <span>Годен до (с упаковки)</span>
+          <div className="field">
+            <div className="row-between" style={{ marginBottom: 4 }}>
+              <span className="small muted">Годен до (дата окончания)</span>
+            </div>
+            <div className="quick-expiry-chips" style={{ marginBottom: 6 }}>
+              {[
+                { label: '+3 дн', days: 3 },
+                { label: '+7 дн', days: 7 },
+                { label: '+14 дн', days: 14 },
+                { label: '+30 дн', days: 30 },
+              ].map((chip) => {
+                const target = addDays(today, chip.days);
+                return (
+                  <button
+                    key={chip.days}
+                    type="button"
+                    className={`quick-chip${d.packageDate === target ? ' active' : ''}`}
+                    onClick={() => onChange({ packageDate: target })}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                className={`quick-chip${!d.packageDate ? ' active' : ''}`}
+                onClick={() => onChange({ packageDate: null })}
+              >
+                Без даты
+              </button>
+            </div>
             <input className="input" type="date" value={d.packageDate ?? ''} onChange={(e) => onChange({ packageDate: e.target.value || null })} />
-          </label>
+          </div>
         </div>
       )}
     </div>

@@ -4,7 +4,7 @@ import { saveItems } from '../data/repo';
 import { AiRequestError, OfflineError, recognize } from '../lib/ai';
 import { makeItem, toReviewDraft } from '../lib/convert';
 import { parseProductsText } from '../lib/parseText';
-import { todayISO } from '../shared/dates';
+import { addDays, todayISO } from '../shared/dates';
 import { getProduct, guessProductKey, LOCATION_LABELS, LOCATIONS, PRODUCTS, type Location } from '../shared/products';
 import { formatQty, UNIT_LABELS, type BaseUnit } from '../shared/units';
 
@@ -84,16 +84,59 @@ function AddOne({ onDone }: { onDone: () => void }) {
             ))}
           </div>
         </div>
-        <div className="field-row">
-          <label className="field">
-            <span>Годен до (если есть на упаковке)</span>
-            <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          </label>
-          <label className="check" style={{ alignSelf: 'end', minHeight: 46 }}>
-            <input type="checkbox" checked={opened} onChange={(e) => setOpened(e.target.checked)} /> Уже открыт
-          </label>
+        <div className="field">
+          <span className="small muted" style={{ marginBottom: 4, display: 'block' }}>
+            Годен до (дата окончания)
+          </span>
+          <div className="quick-expiry-chips" style={{ marginBottom: 6 }}>
+            {[
+              { label: '+3 дн', days: 3 },
+              { label: '+5 дн', days: 5 },
+              { label: '+7 дн', days: 7 },
+              { label: '+14 дн', days: 14 },
+              { label: '+30 дн', days: 30 },
+            ].map((chip) => {
+              const target = addDays(todayISO(), chip.days);
+              return (
+                <button
+                  key={chip.days}
+                  type="button"
+                  className={`quick-chip${date === target ? ' active' : ''}`}
+                  onClick={() => setDate(target)}
+                >
+                  {chip.label}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              className={`quick-chip${!date ? ' active' : ''}`}
+              onClick={() => setDate('')}
+            >
+              Без даты
+            </button>
+          </div>
+          <div className="field-row">
+            <input
+              className="input"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <label className="check" style={{ alignSelf: 'center', minHeight: 42 }}>
+              <input
+                type="checkbox"
+                checked={opened}
+                onChange={(e) => setOpened(e.target.checked)}
+              />{' '}
+              Уже открыт
+            </label>
+          </div>
         </div>
-        <p className="small muted" style={{ margin: 0 }}>Без даты срок посчитается примерно по типу продукта.</p>
+        <p className="small muted" style={{ margin: 0 }}>
+          Без даты срок посчитается примерно по типу продукта.
+        </p>
       </div>
 
       <div className="sheet-footer">

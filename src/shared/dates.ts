@@ -76,3 +76,11 @@ export function formatWeekRange(mondayIso: string): string {
   }
   return `${d1} ${MONTHS_GENITIVE[m1 - 1]} – ${d2} ${MONTHS_GENITIVE[m2 - 1]}`;
 }
+
+/** 2026-09-20 → 20 сентября */
+export function formatDateHuman(iso: string): string {
+  if (!isISODate(iso)) return '';
+  const [, m, d] = iso.split('-').map(Number);
+  return `${d} ${MONTHS_GENITIVE[m - 1]}`;
+}
+
