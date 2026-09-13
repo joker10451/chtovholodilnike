@@ -84,7 +84,7 @@ export function RecipeDetail({ id }: { id: string }) {
       } />
 
       <div className="stack-lg">
-        <Plate big color={recipe.color} photo={recipe.image} />
+        <Plate big recipe={recipe} />
 
         <div className="card flat row-gap">
           <div className="grow">

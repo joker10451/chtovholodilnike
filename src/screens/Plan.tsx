@@ -155,7 +155,7 @@ export function Plan() {
                     </div>
                   </header>
                   <a className="meal-slot-body" href={href('recipe', meal.recipeId)}>
-                    {recipe && <Plate color={recipe.color} photo={recipe.image} />}
+                    {recipe && <Plate recipe={recipe} />}
                     <span className="grow stack" style={{ gap: 5 }}>
                       <b>{meal.title}</b>
                       <span className="wrap-gap">
@@ -220,7 +220,7 @@ function SwapRecipeSheet({ open, onClose, recipes, slot, onSelect }: {
         <div className="list">
           {filtered.map((r) => (
             <button key={r.id} type="button" className="item-row" onClick={() => onSelect(r)}>
-              <Plate color={r.color} photo={r.image} />
+              <Plate recipe={r} />
               <span className="nm">
                 <b>{r.title}</b>
                 <small>{r.time} мин · {r.servings} порц.</small>

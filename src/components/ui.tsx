@@ -121,13 +121,7 @@ export function Segmented<T extends string>({ value, options, onChange }: { valu
   );
 }
 
-export function Plate({ color, big, photo }: { color: string; big?: boolean; photo?: string }) {
-  return (
-    <div className={`plate${big ? ' big' : ''}${photo ? ' photo' : ''}`} style={{ ['--plate' as string]: color }}>
-      {photo && <img src={photo} alt="" loading="lazy" />}
-    </div>
-  );
-}
+export { Plate } from './foodIcons';
 
 export function Ring({ percent }: { percent: number }) {
   const p = Math.round(Math.max(0, Math.min(100, percent)));
@@ -200,8 +194,3 @@ function todayLocal() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export const CATEGORY_DOT: Record<string, string> = {
-  vegetables: '#7BA94A', greens: '#5E9E4B', fruits: '#E9A23B', dairy: '#DCE7F2', eggs: '#EFE2C9', meat: '#D9776A',
-  poultry: '#E9A99A', fish: '#8FB6CF', grains: '#D9C39A', bakery: '#C99A5B', canned: '#B6A58A', sauces: '#D0633F',
-  frozen: '#A9D2E6', sweets: '#B07A5A', drinks: '#9CC7C0', spices: '#B5563A', nuts: '#A7824F', ready: '#C9793A', other: '#AAB7B1',
-};

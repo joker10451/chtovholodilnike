@@ -202,7 +202,7 @@ function RecipeCard({ match: m, hasItems, favorite }: { match: RecipeMatch; hasI
   const r = m.recipe;
   return (
     <a className="recipe-card" href={href('recipe', r.id)}>
-      <Plate color={r.color} photo={r.image} />
+      <Plate recipe={r} />
       <div className="body">
         <span className="title">{r.title}</span>
         <span className="meta num">

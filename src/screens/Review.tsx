@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { IconCheck } from '../components/icons';
-import { CATEGORY_DOT, Empty, Header, Spinner, Stepper, Sticker, toast, useToday } from '../components/ui';
+import { ProductIcon } from '../components/foodIcons';
+import { Empty, Header, Spinner, Stepper, Sticker, toast, useToday } from '../components/ui';
 import { db } from '../data/db';
 import { saveItems, useScan } from '../data/repo';
 import { removeScan, retryScan } from '../data/scanQueue';
@@ -232,7 +233,7 @@ function DraftRow({ draft: d, today, purchasedAt, open, onToggleOpen, onChange }
         >
           {d.include && <IconCheck />}
         </button>
-        <span className="dot"><i style={{ background: CATEGORY_DOT[d.category] }} /></span>
+        <ProductIcon productKey={d.productKey} category={d.category} />
         <button type="button" className="draft-name" onClick={onToggleOpen} aria-expanded={open}>
           <b>{d.name}</b>
           <small className="num">

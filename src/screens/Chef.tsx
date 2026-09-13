@@ -153,7 +153,7 @@ export function ResultCard({ recipe, note, onReset }: { recipe: Recipe; note: st
   return (
     <div className="stack-lg">
       <div className="card stack">
-        <Plate big color={recipe.color} photo={recipe.image} />
+        <Plate big recipe={recipe} />
         <h2 style={{ fontSize: 20 }}>{recipe.title}</h2>
         <span className="meta num"><span>{recipe.time} мин</span><span>{recipe.servings} порц.</span>{recipe.kcal && <span>{recipe.kcal} ккал</span>}</span>
         {note && <div className="notice info">{note}</div>}

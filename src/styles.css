@@ -150,8 +150,8 @@ button.chip.on { background: var(--brand-soft); border-color: var(--brand); colo
 .item-row .nm { flex: 1; min-width: 0; display: grid; gap: 1px; }
 .item-row .nm b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item-row .nm small { color: var(--ink-3); font-size: 12.5px; }
-.dot { width: 36px; height: 36px; border-radius: 11px; background: var(--surface-2); display: grid; place-items: center; flex: 0 0 auto; }
-.dot i { width: 16px; height: 16px; border-radius: 50%; display: block; }
+.dot { --c: #7E8D86; width: 38px; height: 38px; border-radius: 12px; background: color-mix(in srgb, var(--c) 16%, var(--surface)); color: color-mix(in srgb, var(--c) 78%, var(--ink)); display: grid; place-items: center; flex: 0 0 auto; }
+.dot svg { width: 25px; height: 25px; }
 .alert { display: grid; gap: 4px; background: var(--soon-soft); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; border: 0; text-align: left; width: 100%; }
 .alert b { color: var(--soon); font-size: 13.5px; }
 .alert span { font-weight: 600; font-size: 13px; }
@@ -397,13 +397,13 @@ button.chip.on { background: var(--brand-soft); border-color: var(--brand); colo
 .recipe-card .body { flex: 1; min-width: 0; display: grid; gap: 5px; }
 .recipe-card .title { font-weight: 700; font-size: 15px; line-height: 1.25; }
 .meta { display: flex; gap: 10px; flex-wrap: wrap; color: var(--ink-3); font-size: 12.5px; }
-.plate { width: 64px; height: 64px; border-radius: 14px; flex: 0 0 auto; position: relative; overflow: hidden; background: var(--brand-soft); }
-.plate::before { content: ""; position: absolute; inset: 9px; border-radius: 50%; background: #FAFAF7; box-shadow: inset 0 0 0 3px #E3E7E4; }
-.plate::after { content: ""; position: absolute; inset: 20px; border-radius: 50%; background: var(--plate, #C9793A); opacity: .9; }
+.plate { --plate: #C9793A; width: 64px; height: 64px; border-radius: 14px; flex: 0 0 auto; position: relative; overflow: hidden; display: grid; place-items: center;
+  background: radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--plate) 10%, var(--surface)), color-mix(in srgb, var(--plate) 26%, var(--surface)));
+  color: color-mix(in srgb, var(--plate) 45%, var(--ink)); }
+.plate svg { width: 44px; height: 44px; }
 .plate.big { width: 100%; height: 150px; border-radius: 18px; }
-.plate.big::before { inset: auto; width: 128px; height: 128px; left: calc(50% - 64px); top: 11px; }
-.plate.big::after { inset: auto; width: 80px; height: 80px; left: calc(50% - 40px); top: 35px; }
-.plate.photo::before, .plate.photo::after { display: none; }
+.plate.big svg { width: 96px; height: 96px; }
+.plate.photo { background: var(--surface-2); }
 .plate.photo img { width: 100%; height: 100%; object-fit: cover; }
 .ring { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex: 0 0 auto; background: conic-gradient(var(--fresh) calc(var(--p) * 1%), var(--surface-2) 0); }
 .ring b { width: 34px; height: 34px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; font: 600 11px var(--mono); }

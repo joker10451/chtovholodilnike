@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { IconMore, IconPlus } from '../components/icons';
-import { CATEGORY_DOT, Empty, Header, Segmented, Sticker, useToday } from '../components/ui';
+import { ProductIcon } from '../components/foodIcons';
+import { Empty, Header, Segmented, Sticker, useToday } from '../components/ui';
 import { useItems } from '../data/repo';
 import type { InventoryItem } from '../data/types';
 import { go, href, useRoute } from '../router';
@@ -96,7 +97,7 @@ export function Fridge() {
           <div className="list">
             {visible.map((item) => (
               <button key={item.id} className="item-row" onClick={() => setEditing(item)}>
-                <span className="dot"><i style={{ background: CATEGORY_DOT[item.category] }} /></span>
+                <ProductIcon productKey={item.productKey} category={item.category} />
                 <span className="nm">
                   <b>{item.name}</b>
                   <small className="num">

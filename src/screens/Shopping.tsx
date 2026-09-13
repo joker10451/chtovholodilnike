@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { IconCheck, IconClose, IconPlus, IconShare } from '../components/icons';
-import { CATEGORY_DOT, Empty, Header, toast, useToday } from '../components/ui';
+import { ProductIcon } from '../components/foodIcons';
+import { Empty, Header, toast, useToday } from '../components/ui';
 import {
   addShoppingItems,
   clearCheckedShoppingItems,
@@ -157,7 +158,7 @@ function ShoppingRow({ item }: { item: ShoppingItem }) {
       >
         {item.checked && <IconCheck />}
       </button>
-      <span className="dot"><i style={{ background: CATEGORY_DOT[item.category] }} /></span>
+      <ProductIcon productKey={item.productKey} category={item.category} />
       <span className="nm">
         <b>{item.name}</b>
         {(item.recipeTitle || packHint(item.productKey, item.qty, item.unit)) && (
