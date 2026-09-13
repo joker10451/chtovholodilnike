@@ -60,6 +60,14 @@ export function isBarcodeSupported(): boolean {
 export async function detectBarcode(
   source: HTMLVideoElement | HTMLImageElement
 ): Promise<string | null> {
+  if (!source) return null;
+
+  if (source instanceof HTMLVideoElement) {
+    if (source.videoWidth === 0 || source.videoHeight === 0 || source.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+      return null;
+    }
+  }
+
   // 1. Сначала пробуем нативный BarcodeDetector (если поддерживается браузером, например Android Chrome)
   if (hasBarcodeDetector()) {
     try {
@@ -124,21 +132,31 @@ export async function detectBarcodeFromBlob(blob: Blob): Promise<string | null> 
     }
   }
 
-  // 2. Чтение через ZXing с загрузкой изображения
-  const url = URL.createObjectURL(blob);
-  try {
-    const reader = getZXingReader();
-    const res = await reader.decodeFromImageUrl(url);
-    if (res && res.getText()) {
-      return res.getText().trim();
-    }
-  } catch {
-    // ZXing не нашел штрихкод на фото
-  } finally {
-    URL.revokeObjectURL(url);
-  }
+  // 2. Надёжное чтение через HTMLImageElement + ZXing с ожиданием загрузки
+  return new Promise<string | null>((resolve) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
 
-  return null;
+    img.onload = () => {
+      try {
+        const reader = getZXingReader();
+        const res = reader.decode(img);
+        URL.revokeObjectURL(url);
+        resolve(res?.getText()?.trim() || null);
+      } catch {
+        URL.revokeObjectURL(url);
+        resolve(null);
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+
+    img.src = url;
+  });
 }
 
 /** Поиск товара по штрихкоду в базе Open Food Facts */

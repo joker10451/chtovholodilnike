@@ -66,7 +66,13 @@ export function BarcodeScanner() {
         streamRef.current = stream;
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          await videoRef.current.play();
+          videoRef.current.setAttribute('playsinline', 'true');
+          videoRef.current.muted = true;
+          try {
+            await videoRef.current.play();
+          } catch {
+            // Safari autoplay policy
+          }
         }
       } catch (err) {
         if (!stopped) {
