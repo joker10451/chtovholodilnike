@@ -132,22 +132,40 @@ export function parseOffProduct(code: string, p: OffProduct): ProductInfo | null
   };
 }
 
-async function fromOpenFoodFacts(code: string): Promise<ProductInfo | null> {
-  if (!navigator.onLine) return null;
-  try {
-    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=${OFF_FIELDS}&lc=ru`, {
-      signal: AbortSignal.timeout(7000),
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { status?: number; product?: OffProduct };
-    return data.status === 1 && data.product ? parseOffProduct(code, data.product) : null;
-  } catch {
-    return null;
+type OffResponse = { status?: number; product?: OffProduct | null };
+
+/** Сначала напрямую с телефона, если не вышло — через сервер приложения */
+async function fetchOff(code: string): Promise<OffResponse | 'unavailable'> {
+  const direct = `https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=${OFF_FIELDS}&lc=ru`;
+  for (const url of [direct, `/api/barcode?code=${code}`]) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(url === direct ? 5000 : 9000) });
+      // На неизвестный код сайт отвечает 404 с JSON — это «нет в базе», а не сбой
+      if (res.ok || res.status === 404) return (await res.json()) as OffResponse;
+    } catch {
+      /* пробуем следующий путь */
+    }
   }
+  return 'unavailable';
 }
 
-export async function lookupBarcode(code: string): Promise<ProductInfo | null> {
-  return (await fromMemory(code)) ?? (await fromOpenFoodFacts(code));
+export interface LookupResult {
+  product: ProductInfo | null;
+  /** Почему не нашли — показывается в карточке */
+  note: string | null;
+}
+
+export async function lookupBarcode(code: string): Promise<LookupResult> {
+  const remembered = await fromMemory(code);
+  if (remembered) return { product: remembered, note: null };
+  if (!navigator.onLine) return { product: null, note: 'Нет интернета — в вашей базе этого товара ещё нет' };
+
+  const data = await fetchOff(code);
+  if (data === 'unavailable') return { product: null, note: 'База Open Food Facts не ответила' };
+  const product = data.status === 1 && data.product ? parseOffProduct(code, data.product) : null;
+  return product
+    ? { product, note: null }
+    : { product: null, note: 'В Open Food Facts этого товара нет — многих российских товаров там пока нет' };
 }
 
 // ——— Фото упаковки ———

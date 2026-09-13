@@ -38,8 +38,8 @@ const HINTS: Record<Mode, string> = {
 type Flow =
   | { step: 'scan' }
   | { step: 'lookup'; code: string }
-  | { step: 'card'; product: ProductInfo; photo: Blob | null; reading: boolean; error: string | null }
-  | { step: 'capture'; product: ProductInfo; photo: Blob | null; what: 'package' | 'date' };
+  | { step: 'card'; product: ProductInfo; photo: Blob | null; reading: boolean; error: string | null; note: string | null }
+  | { step: 'capture'; product: ProductInfo; photo: Blob | null; what: 'package' | 'date'; note: string | null };
 
 const MODE_KEY = 'holodilnik:scan-mode';
 
@@ -83,7 +83,7 @@ export function Scan() {
   }, [mode, zoomRange, setZoom]);
 
   // Непрерывный поиск штрихкода в центральной полосе кадра
-  const { grabBand, status } = cam;
+  const { grabBand, status, capture } = cam;
   useEffect(() => {
     if (mode !== 'barcode' || flow.step !== 'scan' || status !== 'live') return;
     let stopped = false;
@@ -98,7 +98,10 @@ export function Scan() {
           const codes = await detectCodes(canvas);
           if (stopped) return;
           if (codes.length) {
-            void openCode(codes[0].value, null);
+            // Кадр со штрихкодом сохраняем: если товара нет в базах, нейросеть прочитает упаковку с него
+            const frame = await capture(1600).catch(() => null);
+            if (stopped) return;
+            void openCode(codes[0].value, frame);
             return;
           }
         }
@@ -108,29 +111,32 @@ export function Scan() {
     };
     timer = setTimeout(tick, 250);
     return () => { stopped = true; clearTimeout(timer); };
-  }, [mode, flow.step, status, grabBand]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mode, flow.step, status, grabBand, capture]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function openCode(code: string, photo: Blob | null) {
     navigator.vibrate?.(40);
     setFlash(true);
     setTimeout(() => setFlash(false), 220);
     setFlow({ step: 'lookup', code });
-    const found = await lookupBarcode(code);
-    if (found) setFlow({ step: 'card', product: found, photo, reading: false, error: null });
-    else if (photo && navigator.onLine) await readPhotos([photo], emptyProduct(code), photo);
-    else setFlow({ step: 'card', product: emptyProduct(code), photo, reading: false, error: null });
+    const { product, note } = await lookupBarcode(code);
+    if (product) setFlow({ step: 'card', product, photo, reading: false, error: null, note: null });
+    else if (photo && navigator.onLine) await readPhotos([photo], emptyProduct(code), photo, { note, auto: true });
+    else setFlow({ step: 'card', product: emptyProduct(code), photo, reading: false, error: null, note });
   }
 
   /** Отправляет фото упаковки нейросети и дополняет карточку товара */
-  async function readPhotos(photos: Blob[], base: ProductInfo, cardPhoto: Blob | null) {
-    setFlow({ step: 'card', product: base, photo: cardPhoto, reading: true, error: null });
+  async function readPhotos(
+    photos: Blob[], base: ProductInfo, cardPhoto: Blob | null,
+    { note = null, auto = false }: { note?: string | null; auto?: boolean } = {},
+  ) {
+    setFlow({ step: 'card', product: base, photo: cardPhoto, reading: true, error: null, note });
     try {
       let current = base;
       if (!current.barcode) {
         for (const p of photos) {
           const [code] = await detectCodes(p).catch(() => []);
           if (!code) continue;
-          const known = await lookupBarcode(code.value);
+          const { product: known } = await lookupBarcode(code.value);
           current = known ? mergeProduct(known, current) : { ...current, barcode: code.value };
           setFlow((f) => (f.step === 'card' ? { ...f, product: current } : f));
           break;
@@ -143,11 +149,18 @@ export function Scan() {
         barcode: current.barcode,
         hint: current.name ? [current.name, current.brand].filter(Boolean).join(', ') : null,
       });
-      if (!pkg.found) throw new Error('На фото не видно упаковки. Снимите товар крупнее, этикеткой к камере.');
+      if (!pkg.found || !pkg.name.trim()) {
+        if (auto) {
+          // Со стороны штрихкода часто не видно названия — это не ошибка, просто просим снять лицевую сторону
+          setFlow((f) => (f.step === 'card' ? { ...f, reading: false } : f));
+          return;
+        }
+        throw new Error('На фото не видно упаковки. Снимите товар крупнее, этикеткой к камере.');
+      }
       const fromPhoto = fromPackage(pkg, current.barcode);
       const barcode = fromPhoto.barcode && isValidGtin(fromPhoto.barcode) ? fromPhoto.barcode : current.barcode;
       const merged = mergeProduct(current, { ...fromPhoto, barcode });
-      setFlow((f) => (f.step === 'card' ? { ...f, product: merged, reading: false } : f));
+      setFlow((f) => (f.step === 'card' ? { ...f, product: merged, reading: false, note: null } : f));
     } catch (e) {
       const message = e instanceof AiRequestError || e instanceof Error ? e.message : 'Не получилось прочитать упаковку.';
       setFlow((f) => (f.step === 'card' ? { ...f, reading: false, error: message } : f));
@@ -156,8 +169,8 @@ export function Scan() {
 
   async function handlePhoto(blob: Blob) {
     if (flow.step === 'capture') {
-      const { product, photo, what } = flow;
-      await readPhotos([blob], product, what === 'package' ? blob : photo);
+      const { product, photo, what, note } = flow;
+      await readPhotos([blob], product, what === 'package' ? blob : photo, { note });
       return;
     }
     if (mode === 'barcode') {
@@ -311,7 +324,7 @@ export function Scan() {
             <div className="cam-controls">
               <div className="cam-side">
                 {capturing ? (
-                  <button className="cam-text" onClick={() => setFlow({ step: 'card', product: flow.product, photo: flow.photo, reading: false, error: null })}>Назад</button>
+                  <button className="cam-text" onClick={() => setFlow({ step: 'card', product: flow.product, photo: flow.photo, reading: false, error: null, note: flow.note })}>Назад</button>
                 ) : (
                   <label className="cam-round big" aria-label="Фото из галереи">
                     <IconImage />
@@ -357,7 +370,8 @@ export function Scan() {
             reading={flow.reading}
             readError={flow.error}
             online={online}
-            onPhoto={(what) => setFlow({ step: 'capture', product: flow.product, photo: flow.photo, what })}
+            note={flow.note}
+            onPhoto={(what) => setFlow({ step: 'capture', product: flow.product, photo: flow.photo, what, note: flow.note })}
             onCancel={() => setFlow({ step: 'scan' })}
             onFridge={toFridge}
             onShopping={toShopping}

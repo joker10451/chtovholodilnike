@@ -3,12 +3,18 @@ import type { IncomingMessage } from 'node:http';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-/** В режиме разработки отвечает на /api/ai тем же кодом, что и функция на Vercel */
+/** Функции из папки api/: путь → модуль и обработчик */
+const DEV_ROUTES: Record<string, [string, string]> = {
+  '/api/ai': ['/server/ai.ts', 'handleAiRequest'],
+  '/api/barcode': ['/server/barcode.ts', 'handleBarcodeRequest'],
+};
+
+/** В режиме разработки отвечает на /api/* тем же кодом, что и функции на Vercel */
 function devApi(): Plugin {
   return {
     name: 'dev-api',
     configureServer(server) {
-      server.middlewares.use('/api/ai', async (req: IncomingMessage, res) => {
+      for (const [route, [modulePath, handlerName]] of Object.entries(DEV_ROUTES)) server.middlewares.use(route, async (req: IncomingMessage, res) => {
         try {
           const chunks: Buffer[] = [];
           for await (const chunk of req) chunks.push(chunk as Buffer);
@@ -19,8 +25,8 @@ function devApi(): Plugin {
             headers,
             body: req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks),
           });
-          const mod = (await server.ssrLoadModule('/server/ai.ts')) as typeof import('./server/ai');
-          const response = await mod.handleAiRequest(request);
+          const mod = (await server.ssrLoadModule(modulePath)) as Record<string, (r: Request) => Promise<Response>>;
+          const response = await mod[handlerName](request);
           res.statusCode = response.status;
           response.headers.forEach((value, key) => res.setHeader(key, value));
           res.end(Buffer.from(await response.arrayBuffer()));

@@ -22,13 +22,15 @@ export interface CardResult {
 }
 
 export function ProductCard({
-  product, photo, today, reading, readError, online, onPhoto, onCancel, onFridge, onShopping,
+  product, photo, today, reading, readError, note, online, onPhoto, onCancel, onFridge, onShopping,
 }: {
   product: ProductInfo;
   photo: Blob | null;
   today: string;
   reading: boolean;
   readError: string | null;
+  /** Почему товар не нашёлся в базах */
+  note: string | null;
   online: boolean;
   onPhoto: (what: 'package' | 'date') => void;
   onCancel: () => void;
@@ -79,8 +81,10 @@ export function ProductCard({
         </div>
       </div>
 
+      {note && product.source === 'manual' && <p className="small muted">{note}</p>}
+
       {reading && (
-        <div className="notice info row-gap"><Spinner /> <span>Нейросеть читает упаковку: название, вес, КБЖУ и срок…</span></div>
+        <div className="notice info row-gap"><Spinner /> <span>{product.barcode && product.source === 'manual' ? 'В базах товара нет — нейросеть читает упаковку по снимку…' : 'Нейросеть читает упаковку: название, вес, КБЖУ и срок…'}</span></div>
       )}
       {readError && <div className="notice error">{readError}</div>}
 
@@ -88,7 +92,7 @@ export function ProductCard({
         <button className="pcard-cta" onClick={() => onPhoto('package')} disabled={!online}>
           <IconCamera />
           <span className="grow">
-            <b>Сфотографируйте упаковку</b>
+            <b>{product.barcode ? 'Сфотографируйте лицевую сторону упаковки' : 'Сфотографируйте упаковку'}</b>
             <small>{online ? 'Нейросеть прочитает название, вес, КБЖУ и срок годности' : 'Нужен интернет. Пока можно ввести название вручную'}</small>
           </span>
         </button>
