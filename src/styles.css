@@ -95,14 +95,14 @@ img { max-width: 100%; display: block; }
 }
 .btn:disabled { opacity: .45; cursor: default; }
 .btn.block { width: 100%; }
-.btn.primary { background: var(--brand); color: #fff; }
+.btn.primary { background: var(--brand); color: var(--surface); }
 .btn.ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--line); font-weight: 600; }
 .btn.quiet { background: transparent; color: var(--brand); font-weight: 600; min-height: 40px; padding: 0 10px; }
 .btn.danger { background: var(--bad-soft); color: var(--bad); }
 .btn.small { min-height: 36px; padding: 0 12px; border-radius: 11px; font-size: 13px; }
 .btn svg { width: 18px; height: 18px; }
 .icon-btn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; color: var(--ink); }
-.icon-btn.primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+.icon-btn.primary { background: var(--brand); color: var(--surface); border-color: var(--brand); }
 .icon-btn svg { width: 20px; height: 20px; }
 
 .card { background: var(--surface); border-radius: 16px; padding: 14px; }
@@ -221,230 +221,145 @@ button.chip.on { background: var(--brand-soft); border-color: var(--brand); colo
 .capture label { position: relative; }
 .capture input { position: absolute; inset: 0; opacity: 0; }
 
-/* ——— Сканер штрихкодов ——— */
-.scanner-page {
-  display: flex; flex-direction: column; gap: 14px;
-}
-.scanner-viewfinder-wrap {
-  display: flex; flex-direction: column; gap: 12px;
-}
-.barcode-box {
-  position: relative; width: 100%; aspect-ratio: 4 / 3; max-height: 320px;
-  border-radius: 22px; overflow: hidden; background: #000;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-#barcode-reader-box {
-  width: 100% !important; height: 100% !important; border: none !important;
-  display: flex !important; align-items: center !important; justify-content: center !important;
-  position: relative !important; background: #000 !important;
-}
-#barcode-reader-box video {
-  width: 100% !important; height: 100% !important; object-fit: cover !important;
-  border-radius: 22px !important; display: block !important;
-}
-#barcode-reader-box canvas {
-  display: none !important;
-}
-#barcode-reader-box #qr-shaded-region {
-  display: none !important;
-}
-
-/* Ошибка камеры */
-.camera-error-view {
-  padding: 24px 20px; text-align: center; color: #fff;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-}
-
-/* Рамка и HUD поверх камеры */
-.barcode-hud-overlay {
-  position: absolute; inset: 0; pointer-events: none;
-  display: flex; align-items: center; justify-content: center;
-}
-.barcode-hud-reticle {
-  position: relative; width: 72%; height: 55%;
-  border-radius: 16px;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
-}
-.hud-corner {
-  position: absolute; width: 22px; height: 22px;
-  border-color: #22c55e; border-style: solid;
-}
-.hud-corner.top-left {
-  top: -2px; left: -2px; border-width: 3.5px 0 0 3.5px; border-top-left-radius: 12px;
-}
-.hud-corner.top-right {
-  top: -2px; right: -2px; border-width: 3.5px 3.5px 0 0; border-top-right-radius: 12px;
-}
-.hud-corner.bottom-left {
-  bottom: -2px; left: -2px; border-width: 0 0 3.5px 3.5px; border-bottom-left-radius: 12px;
-}
-.hud-corner.bottom-right {
-  bottom: -2px; right: -2px; border-width: 0 3.5px 3.5px 0; border-bottom-right-radius: 12px;
-}
-
-.barcode-hud-laser {
-  position: absolute; left: 6px; right: 6px; height: 2.5px;
-  background: #22c55e;
-  box-shadow: 0 0 10px #22c55e, 0 0 4px #fff;
-  border-radius: 2px;
-  animation: hudLaserScan 2s infinite ease-in-out alternate;
-}
-@keyframes hudLaserScan {
-  0% { top: 6%; opacity: 0.3; }
-  50% { opacity: 1; }
-  100% { top: 92%; opacity: 0.3; }
-}
-
-.barcode-hud-tip {
-  position: absolute; bottom: 12px; left: 0; right: 0;
-  display: flex; justify-content: center; pointer-events: none;
-}
-.barcode-hud-tip span {
-  background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px);
-  color: #fff; font-size: 12px; font-weight: 500;
-  padding: 5px 14px; border-radius: 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-/* Панель инструментов под сканером */
-.scanner-toolbar {
-  display: flex; gap: 8px; justify-content: center; align-items: center;
-}
-.scanner-tool-btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
-  padding: 10px 16px; border-radius: 14px; font-size: 13px; font-weight: 500;
-  background: var(--surface); border: 1px solid var(--line); color: var(--fg);
-  cursor: pointer; transition: all .15s ease; user-select: none;
-  -webkit-tap-highlight-color: transparent;
-}
-.scanner-tool-btn:active, .scanner-tool-btn.active {
-  background: var(--surface-2); border-color: var(--brand); color: var(--brand);
-}
-.scanner-manual-form {
-  display: flex; gap: 8px; align-items: center;
-  animation: rise .2s ease-out;
-}
-.scanner-loading-badge {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: 14px; padding: 12px 16px; display: flex; align-items: center;
-  justify-content: center; gap: 10px; font-size: 14px; font-weight: 500;
-}
-
-/* ——— Современная карточка найденного продукта ——— */
-.barcode-card-modern {
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: 24px; padding: 18px; display: flex; flex-direction: column; gap: 16px;
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.06);
-  animation: rise .25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.product-summary-row {
-  display: flex; gap: 14px; align-items: center;
-}
-.product-avatar-img {
-  width: 60px; height: 60px; border-radius: 16px; object-fit: cover;
-  background: var(--sunken); border: 1px solid var(--line); flex-shrink: 0;
-}
-.product-avatar-placeholder {
-  width: 60px; height: 60px; border-radius: 16px; display: grid; place-items: center;
-  font-size: 28px; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
-}
-.product-header-info {
-  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px;
-}
-.product-badge-row {
-  display: flex; align-items: center; gap: 6px;
-}
-.product-verified-badge {
-  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px;
-  background: var(--surface-2); color: var(--muted); padding: 2px 8px; border-radius: 6px;
-}
-.product-name-input {
-  font-size: 17px; font-weight: 700; color: var(--fg); background: transparent;
-  border: none; border-bottom: 1.5px solid transparent; padding: 2px 0; outline: none;
-  width: 100%; transition: border-color .15s ease;
-}
-.product-name-input:focus {
-  border-bottom-color: var(--brand);
-}
-
-/* КБЖУ плашки */
-.product-kbju-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
-  background: var(--surface-2); padding: 10px 12px; border-radius: 16px;
-}
-.kbju-cell {
-  display: flex; flex-direction: column; align-items: center; text-align: center;
-}
-.kbju-value {
-  font-size: 14px; font-weight: 700; color: var(--fg); line-height: 1.2;
-}
-.kbju-cell.kcal .kbju-value {
-  color: #f59e0b;
-}
-.kbju-sub {
-  font-size: 10px; color: var(--muted); margin-top: 2px;
-}
-
-/* Блоки полей формы */
-.form-section-card {
-  display: flex; flex-direction: column; gap: 8px;
-}
-.form-section-title-row {
-  display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px;
-}
-.form-section-title {
-  font-size: 13px; font-weight: 600; color: var(--fg);
-}
-.form-section-desc {
-  font-size: 12px; color: var(--muted);
-}
-
-/* Быстрые кнопки срока */
-.quick-expiry-chips {
-  display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;
-  scrollbar-width: none; -webkit-overflow-scrolling: touch;
-}
-.quick-expiry-chips::-webkit-scrollbar {
-  display: none;
-}
+/* ——— Быстрые кнопки срока ——— */
+.quick-expiry-chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.quick-expiry-chips::-webkit-scrollbar { display: none; }
 .quick-chip {
-  padding: 6px 12px; font-size: 12px; font-weight: 500; border-radius: 10px;
-  background: var(--surface-2); border: 1px solid var(--line); color: var(--fg);
-  cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: all .15s ease;
-  -webkit-tap-highlight-color: transparent;
+  padding: 6px 12px; font-size: 12.5px; font-weight: 500; border-radius: 10px; white-space: nowrap; flex-shrink: 0;
+  background: var(--surface-2); border: 1px solid var(--line); color: var(--ink);
 }
-.quick-chip.active {
-  background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 600;
-}
-.date-picker-input {
-  font-size: 14px; height: 42px; border-radius: 12px;
-}
+.quick-chip.active { background: var(--brand); border-color: var(--brand); color: var(--surface); font-weight: 600; }
 
-/* Таблетки выбора места хранения */
-.location-pills-row {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+/* ——— Камера ——— */
+.cam { position: fixed; inset: 0; z-index: 30; background: #050807; color: #F3F6F4; overflow: hidden; }
+.cam-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cam-flash { position: absolute; inset: 0; z-index: 6; background: #fff; opacity: .3; pointer-events: none; }
+.cam-top {
+  position: absolute; left: 0; right: 0; top: 0; z-index: 3; display: flex; align-items: center; gap: 8px;
+  padding: calc(var(--safe-top) + 10px) 14px 24px;
+  background: linear-gradient(rgba(0, 0, 0, .55), transparent);
 }
-.location-pill {
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  padding: 8px 6px; border-radius: 14px; background: var(--surface-2); border: 1.5px solid transparent;
-  color: var(--fg); font-size: 12px; font-weight: 500; cursor: pointer; transition: all .15s ease;
-  -webkit-tap-highlight-color: transparent;
+.cam-round {
+  width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid; place-items: center; position: relative; flex: 0 0 auto;
+  background: rgba(20, 28, 25, .55); color: #F3F6F4; backdrop-filter: blur(10px); text-decoration: none;
 }
-.location-pill .loc-emoji {
-  font-size: 18px; line-height: 1;
+.cam-round svg { width: 22px; height: 22px; }
+.cam-round.on { background: #F5C12A; color: #1A1405; }
+.cam-round.big { width: 52px; height: 52px; }
+.cam-round input { position: absolute; inset: 0; opacity: 0; width: 100%; }
+.cam-pill {
+  border: 0; border-radius: 999px; padding: 9px 14px; font-size: 13.5px; font-weight: 600; text-decoration: none; white-space: nowrap;
+  background: rgba(20, 28, 25, .6); color: #F3F6F4; backdrop-filter: blur(10px);
 }
-.location-pill.active {
-  background: var(--surface); border-color: var(--brand); color: var(--brand);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); font-weight: 600;
-}
+.cam-pill.hot { background: #F5C12A; color: #1A1405; }
 
-/* Нижние кнопки действий */
-.product-actions-footer {
-  display: flex; gap: 8px; margin-top: 4px;
+.cam-reticle { position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%); z-index: 2; pointer-events: none; border-radius: 14px; }
+.cam-reticle.wide { width: min(82vw, 380px); height: min(34vw, 170px); box-shadow: 0 0 0 100vmax rgba(0, 0, 0, .28); }
+.cam-reticle.tall { width: min(72vw, 330px); height: min(92vw, 420px); }
+.cam-reticle.receipt { width: min(62vw, 280px); height: 58vh; }
+.cam-reticle i { position: absolute; width: 30px; height: 30px; border: 3.5px solid #F5C12A; }
+.cam-reticle i:nth-child(1) { left: 0; top: 0; border-right: 0; border-bottom: 0; border-top-left-radius: 14px; }
+.cam-reticle i:nth-child(2) { right: 0; top: 0; border-left: 0; border-bottom: 0; border-top-right-radius: 14px; }
+.cam-reticle i:nth-child(3) { left: 0; bottom: 0; border-right: 0; border-top: 0; border-bottom-left-radius: 14px; }
+.cam-reticle i:nth-child(4) { right: 0; bottom: 0; border-left: 0; border-top: 0; border-bottom-right-radius: 14px; }
+.cam-reticle.hit i { border-color: #58C68C; }
+.cam-laser {
+  position: absolute; left: 8%; right: 8%; top: 50%; height: 2px; background: #F5C12A; box-shadow: 0 0 12px #F5C12A; opacity: .85;
+  animation: laser 1.6s ease-in-out infinite alternate;
 }
+@keyframes laser { from { transform: translateY(-50px); } to { transform: translateY(50px); } }
+.cam-hint {
+  position: absolute; left: 20px; right: 20px; top: calc(44% + min(17vw, 85px) + 20px); z-index: 2; margin: 0;
+  text-align: center; font-size: 15px; font-weight: 600; text-shadow: 0 1px 8px rgba(0, 0, 0, .85); text-wrap: balance;
+}
+.cam-toast {
+  position: absolute; left: 50%; top: 30%; transform: translateX(-50%); z-index: 4; display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; border-radius: 14px; background: rgba(20, 28, 25, .88); font-weight: 600; white-space: nowrap;
+}
+.cam-message {
+  position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  padding: 90px 28px 200px; text-align: center; color: #F3F6F4;
+}
+.cam-message p { color: rgba(243, 246, 244, .75); max-width: 34ch; }
+.cam-message.quiet { padding: 0; }
+
+.cam-bottom {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; display: grid; gap: 14px;
+  padding: 40px 0 calc(var(--safe-bottom) + 12px);
+  background: linear-gradient(transparent, rgba(0, 0, 0, .7) 40%);
+}
+.cam-tray { display: flex; align-items: center; gap: 8px; padding: 0 16px; overflow-x: auto; scrollbar-width: none; }
+.cam-shot { position: relative; width: 54px; height: 72px; border-radius: 10px; overflow: hidden; flex: 0 0 auto; border: 2px solid rgba(255, 255, 255, .8); }
+.cam-shot img { width: 100%; height: 100%; object-fit: cover; }
+.cam-shot button {
+  position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 50%; border: 0; padding: 0;
+  background: rgba(0, 0, 0, .65); color: #fff; font-size: 14px; line-height: 1;
+}
+.cam-count { font: 600 13px var(--mono); color: rgba(243, 246, 244, .8); padding-left: 4px; }
+.cam-controls { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 28px; }
+.cam-side { display: flex; justify-content: center; }
+.cam-shutter { width: 78px; height: 78px; border-radius: 50%; border: 4px solid #F3F6F4; background: transparent; padding: 5px; display: grid; }
+.cam-shutter span { display: block; border-radius: 50%; background: #F3F6F4; transition: transform .12s; }
+.cam-shutter:active span { transform: scale(.88); }
+.cam-shutter:disabled { opacity: .4; }
+.cam-shutter.busy span { background: #F5C12A; }
+.cam-text { background: none; border: 0; color: #F3F6F4; font: 700 16px var(--mono); padding: 12px; }
+.cam-done { border: 0; border-radius: 999px; padding: 12px 18px; background: #F5C12A; color: #1A1405; font-weight: 700; font-size: 15px; }
+.cam-modes { display: flex; gap: 4px; justify-content: safe center; overflow-x: auto; scrollbar-width: none; padding: 0 12px; }
+.cam-modes::-webkit-scrollbar { display: none; }
+.cam-modes button {
+  border: 0; background: none; color: rgba(243, 246, 244, .72); font-size: 12.5px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; padding: 8px 10px; border-radius: 999px; white-space: nowrap;
+}
+.cam-modes button.on { color: #1A1405; background: #F5C12A; }
+.cam-panel {
+  position: absolute; left: 0; right: 0; top: calc(var(--safe-top) + 64px); bottom: calc(var(--safe-bottom) + 58px); z-index: 2; overflow-y: auto;
+  background: var(--ground); color: var(--ink); border-radius: 22px; padding: 16px 14px 24px; margin: 0 6px;
+}
+.cam .sheet, .cam .scrim + .sheet { color: var(--ink); }
+.cam-message .btn.quiet { color: #F5C12A; }
+.cam-scrim { position: absolute; inset: 0; z-index: 4; background: rgba(0, 0, 0, .35); }
+
+/* ——— Карточка товара ——— */
+.pcard {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; max-height: 88dvh; overflow-y: auto;
+  background: var(--ground); color: var(--ink); border-radius: 22px 22px 0 0; max-width: 640px; margin: 0 auto;
+  padding: 8px 16px 0; display: flex; flex-direction: column; gap: 12px; animation: rise .2s ease-out;
+}
+.pcard-grab { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 2px; flex: 0 0 auto; }
+.pcard-head { display: flex; gap: 12px; align-items: flex-start; }
+.pcard-img { width: 72px; height: 72px; border-radius: 16px; overflow: hidden; flex: 0 0 auto; background: var(--brand-soft); display: grid; place-items: center; }
+.pcard-img img { width: 100%; height: 100%; object-fit: cover; }
+.pcard-img span { font: 700 28px var(--display); color: var(--brand); }
+.pcard-name {
+  width: 100%; border: 0; border-bottom: 1.5px dashed var(--line); background: transparent; padding: 2px 0 4px; border-radius: 0;
+  font: 700 18px/1.25 var(--sans); color: var(--ink);
+}
+.pcard-name:focus { outline: none; border-bottom-color: var(--brand); }
+.pcard-cta {
+  display: flex; align-items: center; gap: 12px; text-align: left; width: 100%; padding: 14px; border-radius: 16px;
+  border: 1.5px dashed var(--brand); background: var(--brand-soft); color: var(--ink);
+}
+.pcard-cta svg { width: 26px; height: 26px; color: var(--brand); flex: 0 0 auto; }
+.pcard-cta b { display: block; font-size: 15px; }
+.pcard-cta small { display: block; color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+.pcard-cta:disabled { opacity: .6; }
+.pcard-kbju { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.pcard-kbju div { display: grid; justify-items: center; gap: 1px; padding: 8px 4px; border-radius: 12px; background: var(--surface); }
+.pcard-kbju b { font: 600 16px var(--mono); }
+.pcard-kbju div:first-child b { color: var(--soon); }
+.pcard-kbju span { font-size: 11px; color: var(--ink-3); }
+.pcard-kbju small { grid-column: 1 / -1; text-align: right; font-size: 11px; color: var(--ink-3); margin-top: -2px; }
+.pcard-section { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 16px; background: var(--surface); }
+.pcard-section .warn { color: var(--soon); font-weight: 600; }
+.pcard-datebtn { flex: 0 0 auto; white-space: nowrap; min-height: 46px; }
+.pcard-facts { display: grid; gap: 6px; padding: 0 4px; color: var(--ink-2); }
+.pcard-facts span { color: var(--ink-3); margin-right: 6px; }
+.pcard-actions {
+  position: sticky; bottom: 0; display: flex; gap: 8px; margin: 0 -16px; padding: 12px 16px calc(var(--safe-bottom) + 12px);
+  background: linear-gradient(transparent, var(--ground) 30%);
+}
+.pcard-actions .btn { min-height: 50px; }
 
 /* ——— Окно обновления PWA ——— */
 .update-prompt-scrim {

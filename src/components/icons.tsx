@@ -63,3 +63,5 @@ export const IconMicrophone = (p: P) => (
     <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v3M8 22h8" />
   </svg>
 );
+export const IconClose = (p: P) => (<svg {...base} strokeWidth={2.2} {...p}><path d="M6 6l12 12M18 6L6 18" /></svg>);
+export const IconFlash = (p: P) => (<svg {...base} {...p}><path d="M13 2L5 13.5h6L10 22l8-11.5h-6z" /></svg>);

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useToday } from './components/ui';
 import { useItems, useSettings } from './data/repo';
 import type { MatchContext } from './lib/matching';
@@ -13,4 +13,11 @@ export function useMatchContext(): MatchContext | null {
     () => (items ? { items, staples: new Set(staplesKey ? staplesKey.split(',') : []), today, timeLimit: settings.timeLimit } : null),
     [items, staplesKey, today, settings.timeLimit],
   );
+}
+
+/** Временные ссылки на фото из памяти; освобождаются, когда фото больше не нужны */
+export function useObjectUrls(blobs: Blob[]): string[] {
+  const urls = useMemo(() => blobs.map((b) => URL.createObjectURL(b)), [blobs]);
+  useEffect(() => () => urls.forEach((u) => URL.revokeObjectURL(u)), [urls]);
+  return urls;
 }

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import {
-  AiRequestSchema, GeneratedRecipeSchema, RecognitionSchema, type AiRequest, type ImagePart,
+  AiRequestSchema, GeneratedRecipeSchema, PackageSchema, RecognitionSchema, type AiRequest, type ImagePart,
 } from '../src/shared/aiSchemas.js';
 import { AiError } from './errors.js';
 import { systemPrompt, userText } from './prompts.js';
@@ -90,6 +90,8 @@ async function run(req: AiRequest): Promise<unknown> {
       return generate(system, userText(req), req.images, RecognitionSchema);
     case 'text':
       return generate(system, userText(req), [], RecognitionSchema);
+    case 'package':
+      return generate(system, userText(req), req.images, PackageSchema);
     case 'recipe':
       return generate(system, userText(req), [], GeneratedRecipeSchema);
     case 'import': {

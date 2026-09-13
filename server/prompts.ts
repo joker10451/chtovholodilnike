@@ -37,6 +37,18 @@ const RECEIPT = `Задача: разобрать фото кассового ч
 - purchase_date: дата с чека в формате YYYY-MM-DD.
 - fill, expires_at, box, question — null. photo_index — номер фото чека.`;
 
+const PACKAGE = `Задача: прочитать упаковку одного товара на фото (лицевая сторона, обратная сторона с датой и составом — может быть несколько фото одного товара).
+- Если на фото нет упаковки продукта питания, верни found: false, остальные поля заполни пустыми значениями.
+- name: как товар называется в магазине, по-русски, без бренда: «Творог 5%», «Молоко ультрапастеризованное 3,2%». brand — отдельно.
+- qty и unit: масса нетто или объём всей упаковки («930 мл» → 930 ml, «0,5 кг» → 500 g, «10 шт» → 10 pcs).
+- kcal, proteins, fat, carbs — из таблицы пищевой ценности на 100 г. Не выдумывай, если таблицы не видно.
+- ДАТЫ. На российских упаковках часто напечатана только дата изготовления («изг.», «дата производства», «дата розлива») и срок («годен 10 суток», «срок годности 6 мес.»). Дату изготовления пиши в manufactured_at, срок — в shelf_life_days (месяц = 30 дней). В expires_at пиши только дату, прямо подписанную как «годен до» / «употребить до». Если год не указан — возьми ближайший подходящий к сегодняшней дате.
+- after_opening_days: если написано «после вскрытия хранить не более N суток».
+- storage: условия хранения коротко.
+- location: где хранить по условиям на упаковке (холодильник, морозилка при −18 °C, шкаф).
+- barcode: только цифры под штрихкодом, если они чётко читаются.
+- confidence: насколько уверенно прочитано название.`;
+
 const TEXT = `Задача: разобрать фразу пользователя (часто надиктованную) в список продуктов.
 - «десяток яиц» → 10 pcs, «литр молока» → 1000 ml, «полкило фарша» → 500 g.
 - location: где такой продукт обычно хранят. confidence — 1, если продукт назван явно.
@@ -63,7 +75,7 @@ const IMPORT = `Задача: превратить присланный реце
 - note: откуда рецепт (сайт или книга), если это понятно; иначе null.`;
 
 export function systemPrompt(task: AiRequest['task']): string {
-  const specific = { shelf: SHELF, receipt: RECEIPT, text: TEXT, recipe: RECIPE, import: IMPORT }[task];
+  const specific = { shelf: SHELF, receipt: RECEIPT, text: TEXT, recipe: RECIPE, import: IMPORT, package: PACKAGE }[task];
   return `${BASE}\n\n${specific}`;
 }
 
@@ -75,6 +87,12 @@ export function userText(req: AiRequest, pageText?: string): string {
       return `Сегодня ${req.today}. Разбери чек.`;
     case 'text':
       return `Сегодня ${req.today}. Фраза: «${req.text}»`;
+    case 'package':
+      return [
+        `Сегодня ${req.today}. Фото упаковки: ${req.images.length}.`,
+        req.barcode ? `Штрихкод товара: ${req.barcode}.` : '',
+        req.hint ? `Уже известно: ${req.hint}` : '',
+      ].filter(Boolean).join('\n');
     case 'recipe': {
       const lines = req.inventory
         .map((i) => `- ${i.name}${i.product_key ? ` [${i.product_key}]` : ''}: ${i.qty} ${i.unit}${i.days_left === null ? '' : `, осталось дней: ${i.days_left}`}`)

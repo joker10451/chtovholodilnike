@@ -1,32 +1,198 @@
-import { useEffect, useMemo, useState } from 'react';
-import { IconCamera, IconImage } from '../components/icons';
-import { Header, Segmented, Spinner, toast, useOnline } from '../components/ui';
-import { useScans } from '../data/repo';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { IconClose, IconFlash, IconImage } from '../components/icons';
+import { Sheet, Spinner, toast, useOnline, useToday } from '../components/ui';
+import { addShoppingItems, saveItems, useScans } from '../data/repo';
 import { enqueueScan, processScanQueue, removeScan, retryScan } from '../data/scanQueue';
-import type { ScanJob, ScanMode } from '../data/types';
-import { shrinkPhoto } from '../lib/image';
+import type { ScanJob } from '../data/types';
+import { AiRequestError, readPackage } from '../lib/ai';
+import { emptyProduct, fromPackage, lookupBarcode, mergeProduct, rememberProduct, type ProductInfo } from '../lib/barcode';
+import { useCamera } from '../lib/camera';
+import { makeItem } from '../lib/convert';
+import { shrinkPhoto, toImagePart } from '../lib/image';
+import { detectCodes, isValidGtin, prepareScanner } from '../lib/scanner';
+import { useObjectUrls } from '../hooks';
 import { go, href } from '../router';
-import { BarcodeScanner } from './BarcodeScanner';
+import { ProductCard, type CardResult } from './ProductCard';
 import { VoiceScanner } from './VoiceScanner';
 
-const MAX_PHOTOS: Record<ScanMode, number> = { shelf: 6, barcode: 1, voice: 0, receipt: 4 };
+type Mode = 'barcode' | 'package' | 'shelf' | 'receipt' | 'voice';
+
+const MODES: { value: Mode; label: string }[] = [
+  { value: 'barcode', label: 'Штрихкод' },
+  { value: 'package', label: 'Упаковка' },
+  { value: 'shelf', label: 'Полки' },
+  { value: 'receipt', label: 'Чек' },
+  { value: 'voice', label: 'Голос' },
+];
+
+const MAX_SHOTS: Partial<Record<Mode, number>> = { package: 3, shelf: 6, receipt: 4 };
+
+const HINTS: Record<Mode, string> = {
+  barcode: 'Наведите на штрихкод — он прочитается сам',
+  package: 'Снимите упаковку этикеткой к камере, затем сторону с датой',
+  shelf: 'Одна полка — один снимок',
+  receipt: 'Чек целиком, длинный — в 2–3 снимка',
+  voice: '',
+};
+
+type Flow =
+  | { step: 'scan' }
+  | { step: 'lookup'; code: string }
+  | { step: 'card'; product: ProductInfo; photo: Blob | null; reading: boolean; error: string | null }
+  | { step: 'capture'; product: ProductInfo; photo: Blob | null; what: 'package' | 'date' };
+
+const MODE_KEY = 'holodilnik:scan-mode';
 
 export function Scan() {
   const online = useOnline();
+  const today = useToday();
   const scans = useScans();
-  const [mode, setMode] = useState<ScanMode>('shelf');
-  const [photos, setPhotos] = useState<Blob[]>([]);
+  const [mode, setModeState] = useState<Mode>(() => {
+    try { return (localStorage.getItem(MODE_KEY) as Mode) || 'barcode'; } catch { return 'barcode'; }
+  });
+  const [flow, setFlow] = useState<Flow>({ step: 'scan' });
+  const [shots, setShots] = useState<Blob[]>([]);
+  const [added, setAdded] = useState(0);
+  const [slowHint, setSlowHint] = useState(false);
+  const [flash, setFlash] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [jobsOpen, setJobsOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const previews = useObjectUrls(photos);
+  const cam = useCamera(mode !== 'voice');
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const shotUrls = useObjectUrls(shots);
 
-  async function addFiles(files: FileList | null) {
+  const pending = (scans ?? []).filter((s) => s.status !== 'applied');
+  const ready = pending.filter((s) => s.status === 'ready').length;
+
+  function setMode(m: Mode) {
+    setModeState(m);
+    setShots([]);
+    setFlow({ step: 'scan' });
+    try { localStorage.setItem(MODE_KEY, m); } catch { /* приватный режим */ }
+  }
+
+  useEffect(() => { void prepareScanner().catch(() => {}); }, []);
+
+  // Штрихкоды мелкие: на iPhone с широкоугольной камерой помогает небольшое приближение
+  const { zoomRange, setZoom } = cam;
+  useEffect(() => {
+    if (!zoomRange) return;
+    const wanted = mode === 'barcode' ? Math.min(zoomRange.max, Math.max(zoomRange.min, 1.6)) : zoomRange.min;
+    setZoom(wanted);
+  }, [mode, zoomRange, setZoom]);
+
+  // Непрерывный поиск штрихкода в центральной полосе кадра
+  const { grabBand, status } = cam;
+  useEffect(() => {
+    if (mode !== 'barcode' || flow.step !== 'scan' || status !== 'live') return;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const startedAt = Date.now();
+    setSlowHint(false);
+    const canvas = (canvasRef.current ??= document.createElement('canvas'));
+    const tick = async () => {
+      if (stopped) return;
+      try {
+        if (grabBand(canvas)) {
+          const codes = await detectCodes(canvas);
+          if (stopped) return;
+          if (codes.length) {
+            void openCode(codes[0].value, null);
+            return;
+          }
+        }
+      } catch { /* кадр не прочитался — пробуем следующий */ }
+      if (Date.now() - startedAt > 9000) setSlowHint(true);
+      timer = setTimeout(tick, 110);
+    };
+    timer = setTimeout(tick, 250);
+    return () => { stopped = true; clearTimeout(timer); };
+  }, [mode, flow.step, status, grabBand]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function openCode(code: string, photo: Blob | null) {
+    navigator.vibrate?.(40);
+    setFlash(true);
+    setTimeout(() => setFlash(false), 220);
+    setFlow({ step: 'lookup', code });
+    const found = await lookupBarcode(code);
+    if (found) setFlow({ step: 'card', product: found, photo, reading: false, error: null });
+    else if (photo && navigator.onLine) await readPhotos([photo], emptyProduct(code), photo);
+    else setFlow({ step: 'card', product: emptyProduct(code), photo, reading: false, error: null });
+  }
+
+  /** Отправляет фото упаковки нейросети и дополняет карточку товара */
+  async function readPhotos(photos: Blob[], base: ProductInfo, cardPhoto: Blob | null) {
+    setFlow({ step: 'card', product: base, photo: cardPhoto, reading: true, error: null });
+    try {
+      let current = base;
+      if (!current.barcode) {
+        for (const p of photos) {
+          const [code] = await detectCodes(p).catch(() => []);
+          if (!code) continue;
+          const known = await lookupBarcode(code.value);
+          current = known ? mergeProduct(known, current) : { ...current, barcode: code.value };
+          setFlow((f) => (f.step === 'card' ? { ...f, product: current } : f));
+          break;
+        }
+      }
+      const pkg = await readPackage({
+        task: 'package',
+        today,
+        images: await Promise.all(photos.map(toImagePart)),
+        barcode: current.barcode,
+        hint: current.name ? [current.name, current.brand].filter(Boolean).join(', ') : null,
+      });
+      if (!pkg.found) throw new Error('На фото не видно упаковки. Снимите товар крупнее, этикеткой к камере.');
+      const fromPhoto = fromPackage(pkg, current.barcode);
+      const barcode = fromPhoto.barcode && isValidGtin(fromPhoto.barcode) ? fromPhoto.barcode : current.barcode;
+      const merged = mergeProduct(current, { ...fromPhoto, barcode });
+      setFlow((f) => (f.step === 'card' ? { ...f, product: merged, reading: false } : f));
+    } catch (e) {
+      const message = e instanceof AiRequestError || e instanceof Error ? e.message : 'Не получилось прочитать упаковку.';
+      setFlow((f) => (f.step === 'card' ? { ...f, reading: false, error: message } : f));
+    }
+  }
+
+  async function handlePhoto(blob: Blob) {
+    if (flow.step === 'capture') {
+      const { product, photo, what } = flow;
+      await readPhotos([blob], product, what === 'package' ? blob : photo);
+      return;
+    }
+    if (mode === 'barcode') {
+      const [code] = await detectCodes(blob).catch(() => []);
+      if (code) return openCode(code.value, blob);
+      if (!navigator.onLine) {
+        toast('Штрихкод на фото не найден. Без интернета упаковку прочитать нельзя — введите цифры.');
+        return;
+      }
+      return readPhotos([blob], emptyProduct(null), blob);
+    }
+    const max = MAX_SHOTS[mode] ?? 1;
+    setShots((s) => (s.length >= max ? s : [...s, blob]));
+  }
+
+  async function shoot() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const blob = await cam.capture(1600);
+      if (!blob) return;
+      setFlash(true);
+      setTimeout(() => setFlash(false), 160);
+      await handlePhoto(blob);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function fromGallery(files: FileList | null) {
     if (!files?.length) return;
     setBusy(true);
     try {
-      const room = MAX_PHOTOS[mode] - photos.length;
-      const shrunk = await Promise.all([...files].slice(0, room).map(shrinkPhoto));
-      setPhotos((p) => [...p, ...shrunk]);
-      if (files.length > room) toast(`За раз можно до ${MAX_PHOTOS[mode]} фото`);
+      const list = [...files].slice(0, MAX_SHOTS[mode] ?? 1);
+      for (const f of list) await handlePhoto(await shrinkPhoto(f));
     } catch (e) {
       toast((e as Error).message);
     } finally {
@@ -34,111 +200,198 @@ export function Scan() {
     }
   }
 
-  async function submit() {
-    const id = await enqueueScan(mode, photos);
-    setPhotos([]);
-    if (online) go(href('review', id));
+  async function finishShots() {
+    if (mode === 'package') {
+      const photos = shots;
+      setShots([]);
+      await readPhotos(photos, emptyProduct(null), photos[0]);
+      return;
+    }
+    if (mode !== 'shelf' && mode !== 'receipt') return;
+    const id = await enqueueScan(mode, shots);
+    setShots([]);
+    if (navigator.onLine) go(href('review', id));
     else toast('Фото сохранены. Распознаю, когда появится интернет.');
   }
 
-  const pending = (scans ?? []).filter((s) => s.status !== 'applied');
-  const full = photos.length >= MAX_PHOTOS[mode];
+  async function toFridge(r: CardResult) {
+    const p = r.product;
+    const item = makeItem({
+      name: p.name, productKey: p.productKey, category: p.category, qty: r.qty, unit: r.unit, location: p.location,
+      packageDate: r.expiresAt, purchasedAt: today, source: p.barcode ? 'barcode' : 'photo', nutriments: p.nutriments ?? undefined,
+    });
+    await saveItems([item]);
+    await rememberProduct({ ...p, qty: r.qty, unit: r.unit });
+    setAdded((a) => a + 1);
+    toast(`В холодильнике: ${item.name}`);
+    setFlow({ step: 'scan' });
+  }
+
+  async function toShopping(r: CardResult) {
+    const p = r.product;
+    await addShoppingItems([{ name: p.name, productKey: p.productKey, category: p.category, qty: r.qty, unit: r.unit }]);
+    await rememberProduct({ ...p, qty: r.qty, unit: r.unit });
+    toast(`В покупках: ${p.name}`);
+    setFlow({ step: 'scan' });
+  }
+
+  const cameraMode = mode !== 'voice';
+  const capturing = flow.step === 'capture';
+  const collecting = !capturing && (mode === 'package' || mode === 'shelf' || mode === 'receipt');
+  const max = MAX_SHOTS[mode] ?? 0;
+  const reticle = capturing ? 'tall' : mode === 'barcode' ? 'wide' : mode === 'package' ? 'tall' : mode === 'receipt' ? 'receipt' : null;
+  const hint = capturing
+    ? flow.what === 'date' ? 'Снимите дату крупно: «годен до» или «изготовлено»' : 'Снимите упаковку этикеткой к камере'
+    : mode === 'barcode' && slowHint ? 'Не читается? Отодвиньте телефон на 15–20 см или нажмите кнопку, чтобы сфотографировать упаковку' : HINTS[mode];
 
   return (
-    <main className="screen">
-      <Header
-        title="Скан"
-        sub={
-          mode === 'barcode'
-            ? 'Мгновенное распознавание продуктов по штрихкоду'
-            : mode === 'voice'
-            ? 'Назовите продукты голосом или вставьте списком'
-            : mode === 'shelf'
-            ? 'Сфотографируйте каждую полку по очереди'
-            : 'Сфотографируйте чек целиком, чтобы был виден весь список'
-        }
-      />
-      <Segmented<ScanMode>
-        value={mode}
-        onChange={(m) => { setMode(m); setPhotos([]); }}
-        options={[
-          { value: 'shelf', label: 'Полки' },
-          { value: 'barcode', label: 'Штрихкод' },
-          { value: 'voice', label: 'Голос' },
-          { value: 'receipt', label: 'Чек' },
-        ]}
-      />
+    <div className="cam">
+      {cameraMode && <video ref={cam.videoRef} className="cam-video" playsInline muted autoPlay />}
+      {flash && <div className="cam-flash" />}
 
-      {mode === 'barcode' ? (
-        <BarcodeScanner />
-      ) : mode === 'voice' ? (
-        <VoiceScanner />
-      ) : (
-        <div className="stack-lg">
-          {photos.length > 0 && (
-            <div className="shots">
-              {previews.map((url, i) => (
-                <div key={url} className="shot">
-                  <img src={url} alt={`Фото ${i + 1}`} />
-                  <button aria-label="Убрать фото" onClick={() => setPhotos(photos.filter((_, j) => j !== i))}>×</button>
-                </div>
-              ))}
-            </div>
-          )}
+      <header className="cam-top">
+        <a className="cam-round" href={href('fridge')} aria-label="Закрыть"><IconClose /></a>
+        {added > 0 && <a className="cam-pill" href={href('fridge')}>Добавлено {added} · Готово</a>}
+        <div className="grow" />
+        {pending.length > 0 && (
+          <button className={`cam-pill${ready ? ' hot' : ''}`} onClick={() => setJobsOpen(true)}>
+            {ready ? `Проверить: ${ready}` : `Распознаётся: ${pending.length}`}
+          </button>
+        )}
+        {cameraMode && cam.torchSupported && (
+          <button className={`cam-round${cam.torchOn ? ' on' : ''}`} onClick={cam.toggleTorch} aria-label="Фонарик"><IconFlash /></button>
+        )}
+      </header>
 
-          <div className="capture">
-            <label className={`btn ${photos.length ? 'ghost' : ''}`} aria-disabled={full}>
-              {busy ? <Spinner /> : <IconCamera />} {photos.length ? 'Ещё фото' : 'Снять'}
-              <input type="file" accept="image/*" capture="environment" disabled={full || busy} onChange={(e) => { void addFiles(e.target.files); e.target.value = ''; }} />
-            </label>
-            <label className="btn ghost" aria-disabled={full}>
-              <IconImage /> Из галереи
-              <input type="file" accept="image/*" multiple disabled={full || busy} onChange={(e) => { void addFiles(e.target.files); e.target.value = ''; }} />
-            </label>
-          </div>
-
-          {photos.length > 0 && (
-            <button className="btn block" onClick={submit}>
-              {online ? `Распознать ${photos.length} фото` : `Сохранить ${photos.length} фото до появления интернета`}
-            </button>
-          )}
-
-          {photos.length === 0 && (
-            <div className="card flat stack">
-              <b>{mode === 'shelf' ? 'Как снимать, чтобы нейросеть всё нашла' : 'Как снимать чек'}</b>
-              {mode === 'shelf' ? (
-                <ul className="small muted" style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 4 }}>
-                  <li>Одна полка — одно фото, дверца — отдельным снимком.</li>
-                  <li>Поверните упаковки этикетками к камере, если не трудно.</li>
-                  <li>Включите свет, снимайте без вспышки.</li>
-                  <li>Дату «годен до» нейросеть прочитает, если она видна крупно.</li>
-                </ul>
-              ) : (
-                <p className="small muted">Разгладьте чек и снимайте сверху. Длинный чек можно снять в 2–3 фото. Бытовая химия и пакеты в список не попадут.</p>
-              )}
-            </div>
-          )}
-
-          {!online && (
-            <div className="notice">Нет интернета. Фото можно снять сейчас — нейросеть разберёт их, когда телефон подключится (например, через VPN).</div>
-          )}
-
-          {pending.length > 0 && (
-            <div className="stack">
-              <div className="section-label">Распознавание</div>
-              <div className="list">{pending.map((job) => <ScanRow key={job.id} job={job} online={online} />)}</div>
-            </div>
-          )}
+      {cameraMode && cam.status === 'live' && reticle && (
+        <div className={`cam-reticle ${reticle}${flow.step === 'lookup' ? ' hit' : ''}`}>
+          <i /><i /><i /><i />
+          {mode === 'barcode' && !capturing && flow.step === 'scan' && <span className="cam-laser" />}
         </div>
       )}
-    </main>
+      {cameraMode && cam.status === 'live' && flow.step !== 'card' && hint && <p className="cam-hint">{hint}</p>}
+
+      {cameraMode && (cam.status === 'denied' || cam.status === 'unavailable' || cam.status === 'error') && (
+        <div className="cam-message">
+          <b>Камера не включилась</b>
+          <p>{cam.error}</p>
+          <div className="stack" style={{ width: '100%' }}>
+            <label className="btn block" style={{ position: 'relative' }}>
+              <IconImage /> Выбрать фото
+              <input type="file" accept="image/*" multiple style={{ position: 'absolute', inset: 0, opacity: 0 }} onChange={(e) => { void fromGallery(e.target.files); e.target.value = ''; }} />
+            </label>
+            {mode === 'barcode' && <button className="btn ghost block" onClick={() => setManualOpen(true)}>Ввести цифры штрихкода</button>}
+            <button className="btn quiet" onClick={cam.restart}>Попробовать снова</button>
+          </div>
+        </div>
+      )}
+      {cameraMode && cam.status === 'starting' && <div className="cam-message quiet"><Spinner /></div>}
+
+      {mode === 'voice' && <div className="cam-panel"><VoiceScanner /></div>}
+
+      {flow.step === 'lookup' && (
+        <div className="cam-toast"><Spinner /> Ищу товар {flow.code}…</div>
+      )}
+
+      {flow.step !== 'card' && (
+        <footer className="cam-bottom">
+          {collecting && shots.length > 0 && (
+            <div className="cam-tray">
+              {shotUrls.map((url, i) => (
+                <div key={url} className="cam-shot">
+                  <img src={url} alt={`Снимок ${i + 1}`} />
+                  <button aria-label="Убрать снимок" onClick={() => setShots(shots.filter((_, j) => j !== i))}>×</button>
+                </div>
+              ))}
+              <span className="cam-count num">{shots.length}/{max}</span>
+            </div>
+          )}
+
+          {cameraMode && (
+            <div className="cam-controls">
+              <div className="cam-side">
+                {capturing ? (
+                  <button className="cam-text" onClick={() => setFlow({ step: 'card', product: flow.product, photo: flow.photo, reading: false, error: null })}>Назад</button>
+                ) : (
+                  <label className="cam-round big" aria-label="Фото из галереи">
+                    <IconImage />
+                    <input type="file" accept="image/*" multiple={collecting} onChange={(e) => { void fromGallery(e.target.files); e.target.value = ''; }} />
+                  </label>
+                )}
+              </div>
+              <button
+                className={`cam-shutter${busy ? ' busy' : ''}`}
+                aria-label={mode === 'barcode' && !capturing ? 'Сфотографировать упаковку' : 'Сделать снимок'}
+                disabled={cam.status !== 'live' || busy || (collecting && shots.length >= max)}
+                onClick={shoot}
+              ><span /></button>
+              <div className="cam-side">
+                {collecting && shots.length > 0 ? (
+                  <button className="cam-done" onClick={finishShots}>
+                    {mode === 'package' ? 'Прочитать' : online ? 'Готово' : 'Сохранить'}
+                  </button>
+                ) : mode === 'barcode' && !capturing ? (
+                  <button className="cam-text" onClick={() => setManualOpen(true)}>123</button>
+                ) : null}
+              </div>
+            </div>
+          )}
+
+          {!capturing && (
+            <nav className="cam-modes" aria-label="Режим">
+              {MODES.map((m) => (
+                <button key={m.value} className={m.value === mode ? 'on' : ''} onClick={() => setMode(m.value)}>{m.label}</button>
+              ))}
+            </nav>
+          )}
+        </footer>
+      )}
+
+      {flow.step === 'card' && (
+        <>
+          <div className="cam-scrim" />
+          <ProductCard
+            product={flow.product}
+            photo={flow.photo}
+            today={today}
+            reading={flow.reading}
+            readError={flow.error}
+            online={online}
+            onPhoto={(what) => setFlow({ step: 'capture', product: flow.product, photo: flow.photo, what })}
+            onCancel={() => setFlow({ step: 'scan' })}
+            onFridge={toFridge}
+            onShopping={toShopping}
+          />
+        </>
+      )}
+
+      <ManualCodeSheet open={manualOpen} onClose={() => setManualOpen(false)} onSubmit={(code) => { setManualOpen(false); void openCode(code, null); }} />
+
+      <Sheet open={jobsOpen} onClose={() => setJobsOpen(false)} title="Распознавание фото">
+        <div className="list">{pending.map((job) => <ScanRow key={job.id} job={job} online={online} />)}</div>
+      </Sheet>
+    </div>
+  );
+}
+
+function ManualCodeSheet({ open, onClose, onSubmit }: { open: boolean; onClose: () => void; onSubmit: (code: string) => void }) {
+  const [code, setCode] = useState('');
+  const digits = code.replace(/\D/g, '');
+  const valid = isValidGtin(digits);
+  return (
+    <Sheet open={open} onClose={onClose} title="Цифры под штрихкодом">
+      <form className="stack" onSubmit={(e) => { e.preventDefault(); if (valid) { onSubmit(digits); setCode(''); } }}>
+        <input className="input mono" inputMode="numeric" autoFocus placeholder="4607004891234" value={code} onChange={(e) => setCode(e.target.value)} />
+        {digits.length >= 8 && !valid && <p className="small" style={{ color: 'var(--bad)' }}>Похоже, в цифрах опечатка — проверьте код ещё раз.</p>}
+        <button className="btn block" type="submit" disabled={!valid}>Найти товар</button>
+      </form>
+    </Sheet>
   );
 }
 
 function ScanRow({ job, online }: { job: ScanJob; online: boolean }) {
   const [thumb] = useObjectUrls(useMemo(() => job.photos.slice(0, 1), [job.photos]));
-  const label = job.mode === 'shelf' ? `Полки · ${job.photos.length} фото` : 'Чек';
-  const time = new Date(job.createdAt).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const label = job.mode === 'receipt' ? 'Чек' : `Полки · ${job.photos.length} фото`;
   return (
     <div className="scan-job">
       {thumb ? <img className="thumb" src={thumb} alt="" /> : <span className="thumb" />}
@@ -147,7 +400,7 @@ function ScanRow({ job, online }: { job: ScanJob; online: boolean }) {
         <div className="small muted">
           {job.status === 'queued' && (online ? 'В очереди…' : 'Ждёт интернета')}
           {job.status === 'processing' && 'Нейросеть смотрит фото…'}
-          {job.status === 'ready' && `Найдено: ${job.result?.items.length ?? 0} · ${time}`}
+          {job.status === 'ready' && `Найдено: ${job.result?.items.length ?? 0}`}
           {job.status === 'error' && <span style={{ color: 'var(--bad)' }}>{job.error}</span>}
         </div>
       </div>
@@ -165,10 +418,4 @@ function ScanRow({ job, online }: { job: ScanJob; online: boolean }) {
 function QueueKick() {
   useEffect(() => { void processScanQueue(); }, []);
   return null;
-}
-
-export function useObjectUrls(blobs: Blob[]): string[] {
-  const urls = useMemo(() => blobs.map((b) => URL.createObjectURL(b)), [blobs]);
-  useEffect(() => () => urls.forEach((u) => URL.revokeObjectURL(u)), [urls]);
-  return urls;
 }

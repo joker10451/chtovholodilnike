@@ -64,7 +64,7 @@ export function App() {
     case 'settings': screen = <Settings />; break;
     default: screen = <Fridge />;
   }
-  const showTabs = !['cook', 'recipe', 'catalog'].includes(route.name);
+  const showTabs = !['cook', 'recipe', 'catalog', 'scan'].includes(route.name);
   const tab = TAB_OF[route.name] ?? 'fridge';
 
   return (

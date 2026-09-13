@@ -70,7 +70,7 @@ export interface PlannedMeal {
   createdAt: number;
 }
 
-export type RecordKind = 'item' | 'recipe' | 'settings' | 'cooklog' | 'shopping' | 'plan';
+export type RecordKind = 'item' | 'recipe' | 'settings' | 'cooklog' | 'shopping' | 'plan' | 'barcode';
 
 /** Любая синхронизируемая запись. dirty = 1 — ещё не отправлена на сервер */
 export interface SyncRecord<T = unknown> {
@@ -82,7 +82,8 @@ export interface SyncRecord<T = unknown> {
   dirty: 0 | 1;
 }
 
-export type ScanMode = 'shelf' | 'barcode' | 'voice' | 'receipt';
+/** Режимы, фото которых разбираются в очереди и проверяются на отдельном экране */
+export type ScanMode = 'shelf' | 'receipt';
 export type ScanStatus = 'queued' | 'processing' | 'ready' | 'error' | 'applied';
 
 /** Фото, ожидающие распознавания. Хранятся только на этом телефоне */

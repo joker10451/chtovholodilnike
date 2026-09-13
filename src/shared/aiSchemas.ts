@@ -63,6 +63,32 @@ export const GeneratedRecipeSchema = z.object({
   note: z.string().nullable().describe('Одно предложение: какие продукты блюдо помогает доесть'),
 });
 
+/** Карточка одного товара, прочитанная с упаковки */
+export const PackageSchema = z.object({
+  found: z.boolean().describe('false — на фото нет упаковки продукта'),
+  name: z.string().describe('Понятное название без бренда: «Молоко ультрапастеризованное 3,2%»'),
+  brand: z.string().nullable(),
+  product_key: z.string().nullable(),
+  category: categoryEnum,
+  qty: z.number().describe('Вес или объём всей упаковки в unit; для штучного — число штук'),
+  unit: z.enum(['g', 'ml', 'pcs']),
+  fat_percent: z.number().nullable(),
+  kcal: z.number().nullable().describe('ккал на 100 г/мл'),
+  proteins: z.number().nullable().describe('г на 100 г/мл'),
+  fat: z.number().nullable().describe('г на 100 г/мл'),
+  carbs: z.number().nullable().describe('г на 100 г/мл'),
+  expires_at: z.string().nullable().describe('Дата «годен до» YYYY-MM-DD, если напечатана'),
+  manufactured_at: z.string().nullable().describe('Дата изготовления YYYY-MM-DD, если напечатана'),
+  shelf_life_days: z.number().nullable().describe('Срок годности в днях из текста «хранить N суток»'),
+  after_opening_days: z.number().nullable().describe('Сколько дней хранится после вскрытия, если написано'),
+  storage: z.string().nullable().describe('Условия хранения коротко: «при +2…+6 °C»'),
+  location: locationEnum,
+  barcode: z.string().nullable().describe('Цифры штрихкода, если читаются под полосками'),
+  composition: z.string().nullable().describe('Состав одной короткой строкой, до 120 символов'),
+  confidence: z.number(),
+});
+export type PackageInfo = z.infer<typeof PackageSchema>;
+
 export type RecognizedItem = z.infer<typeof RecognizedItemSchema>;
 export type Recognition = z.infer<typeof RecognitionSchema>;
 export type GeneratedRecipe = z.infer<typeof GeneratedRecipeSchema>;
@@ -79,6 +105,13 @@ export const AiRequestSchema = z.discriminatedUnion('task', [
   z.object({ task: z.literal('shelf'), today, images: z.array(ImagePartSchema).min(1).max(6) }),
   z.object({ task: z.literal('receipt'), today, images: z.array(ImagePartSchema).min(1).max(4) }),
   z.object({ task: z.literal('text'), today, text: z.string().min(1).max(2000) }),
+  z.object({
+    task: z.literal('package'),
+    today,
+    images: z.array(ImagePartSchema).min(1).max(3),
+    barcode: z.string().max(32).nullable(),
+    hint: z.string().max(200).nullable().describe('Что уже известно о товаре, например из базы штрихкодов'),
+  }),
   z.object({
     task: z.literal('import'),
     today,

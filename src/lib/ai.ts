@@ -1,7 +1,8 @@
 import type { z } from 'zod';
 import { getMeta } from '../data/db';
 import {
-  GeneratedRecipeSchema, RecognitionSchema, type AiRequest, type GeneratedRecipe, type Recognition,
+  GeneratedRecipeSchema, PackageSchema, RecognitionSchema,
+  type AiRequest, type GeneratedRecipe, type PackageInfo, type Recognition,
 } from '../shared/aiSchemas';
 
 export class OfflineError extends Error {
@@ -50,4 +51,8 @@ export function recognize(body: Extract<AiRequest, { task: 'shelf' | 'receipt' |
 
 export function generateRecipe(body: Extract<AiRequest, { task: 'recipe' | 'import' }>): Promise<GeneratedRecipe> {
   return call(body, GeneratedRecipeSchema);
+}
+
+export function readPackage(body: Extract<AiRequest, { task: 'package' }>): Promise<PackageInfo> {
+  return call(body, PackageSchema);
 }

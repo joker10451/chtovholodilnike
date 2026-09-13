@@ -34,8 +34,7 @@ export async function processScanQueue(): Promise<void> {
       await db.scans.update(job.id, { status: 'processing' });
       try {
         const images = await Promise.all(job.photos.map(toImagePart));
-        const task = job.mode === 'receipt' ? 'receipt' : 'shelf';
-        const result = await recognize({ task, today: todayISO(), images });
+        const result = await recognize({ task: job.mode, today: todayISO(), images });
         await db.scans.update(job.id, { status: 'ready', result, error: undefined });
       } catch (e) {
         if (e instanceof OfflineError) {

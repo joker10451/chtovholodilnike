@@ -9,7 +9,7 @@ import { addDays, isISODate } from '../shared/dates';
 import { estimateExpiry } from '../shared/freshness';
 import { getProduct, LOCATION_LABELS, LOCATIONS, PRODUCTS } from '../shared/products';
 import { UNIT_LABELS, type BaseUnit } from '../shared/units';
-import { useObjectUrls } from './Scan';
+import { useObjectUrls } from '../hooks';
 import { plural } from './Fridge';
 
 export function Review({ id }: { id: string }) {
