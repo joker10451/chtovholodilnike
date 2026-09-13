@@ -70,6 +70,13 @@ export function Plan() {
 
   const activeDayMeals = mealsByDay.get(activeDate) ?? [];
 
+  const activeDayKcal = useMemo(() => {
+    return activeDayMeals.reduce((acc, m) => {
+      const rec = recipes.find((r) => r.id === m.recipeId);
+      return acc + (rec?.kcal ?? 0);
+    }, 0);
+  }, [activeDayMeals, recipes]);
+
   async function handleAutoGenerate() {
     if (!ctx || recipes.length === 0) return;
     const newPlan = generateWeekPlan({
@@ -257,6 +264,23 @@ export function Plan() {
         {/* Слоты выбранного дня */}
         {activeDayMeals.length > 0 && (
           <div className="stack" style={{ gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
+              <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Меню на день</span>
+              {activeDayKcal > 0 && (
+                <span
+                  style={{
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    color: 'var(--brand)',
+                    background: 'var(--surface-2)',
+                    padding: '3px 8px',
+                    borderRadius: 8,
+                  }}
+                >
+                  🔥 ~{activeDayKcal} ккал
+                </span>
+              )}
+            </div>
             {activeDayMeals.map((meal) => {
               const recipe = recipes.find((r) => r.id === meal.recipeId);
               return (

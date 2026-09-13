@@ -1,3 +1,4 @@
+import type { Nutriments } from '../data/types';
 import { estimateExpiry } from '../shared/freshness';
 import { getProduct, guessProductKey, type Category, type Location } from '../shared/products';
 import type { ItemUnit } from '../shared/units';
@@ -14,6 +15,7 @@ export interface ScannedProduct {
   imageUrl?: string;
   expiresAt: string | null;
   isEstimate: boolean;
+  nutriments?: Nutriments;
 }
 
 const CACHE = new Map<string, ScannedProduct>();
@@ -27,7 +29,7 @@ export async function lookupBarcode(barcode: string, todayIso: string): Promise<
   }
 
   try {
-    const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=code,product_name,product_name_ru,brands,quantity,categories_tags,image_url`;
+    const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=code,product_name,product_name_ru,brands,quantity,categories_tags,image_url,nutriments`;
     const res = await fetch(url, {
       headers: { 'User-Agent': 'ChtoVHolodilnike/1.0 (Family Fridge Assistant)' },
     });
@@ -58,6 +60,22 @@ export async function lookupBarcode(barcode: string, todayIso: string): Promise<
         packageDate: null,
       });
 
+      const n = p.nutriments || {};
+      const rawKcal = n['energy-kcal_100g'] ?? n['energy-kcal'] ?? n['energy-kcal_value'];
+      const rawProteins = n['proteins_100g'] ?? n['proteins_value'];
+      const rawFat = n['fat_100g'] ?? n['fat_value'];
+      const rawCarbs = n['carbohydrates_100g'] ?? n['carbohydrates_value'];
+
+      const nutriments: Nutriments | undefined =
+        rawKcal !== undefined || rawProteins !== undefined
+          ? {
+              kcal: rawKcal !== undefined ? Math.round(Number(rawKcal)) : undefined,
+              proteins: rawProteins !== undefined ? Math.round(Number(rawProteins) * 10) / 10 : undefined,
+              fat: rawFat !== undefined ? Math.round(Number(rawFat) * 10) / 10 : undefined,
+              carbs: rawCarbs !== undefined ? Math.round(Number(rawCarbs) * 10) / 10 : undefined,
+            }
+          : undefined;
+
       const item: ScannedProduct = {
         barcode: code,
         name: fullName,
@@ -70,6 +88,7 @@ export async function lookupBarcode(barcode: string, todayIso: string): Promise<
         imageUrl: p.image_url,
         expiresAt,
         isEstimate,
+        nutriments,
       };
 
       CACHE.set(code, item);

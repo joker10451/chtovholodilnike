@@ -170,6 +170,7 @@ export function BarcodeScanner() {
       purchasedAt: todayISO(),
       opened: false,
       source: 'barcode',
+      nutriments: product?.nutriments,
     });
     await saveItems([item]);
     toast(`Добавлено: ${item.name}`);
@@ -302,6 +303,46 @@ export function BarcodeScanner() {
               />
             </div>
           </div>
+
+          {product.nutriments && (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: 6,
+                background: 'var(--surface-2)',
+                padding: '8px 10px',
+                borderRadius: 12,
+                textAlign: 'center',
+                fontSize: 12,
+              }}
+            >
+              <div>
+                <b style={{ display: 'block', fontSize: 13, color: 'var(--brand)' }}>
+                  {product.nutriments.kcal ?? '—'}
+                </b>
+                <span className="muted" style={{ fontSize: 10 }}>ккал/100г</span>
+              </div>
+              <div>
+                <b style={{ display: 'block', fontSize: 13 }}>
+                  {product.nutriments.proteins ?? '—'}г
+                </b>
+                <span className="muted" style={{ fontSize: 10 }}>Белки</span>
+              </div>
+              <div>
+                <b style={{ display: 'block', fontSize: 13 }}>
+                  {product.nutriments.fat ?? '—'}г
+                </b>
+                <span className="muted" style={{ fontSize: 10 }}>Жиры</span>
+              </div>
+              <div>
+                <b style={{ display: 'block', fontSize: 13 }}>
+                  {product.nutriments.carbs ?? '—'}г
+                </b>
+                <span className="muted" style={{ fontSize: 10 }}>Углеводы</span>
+              </div>
+            </div>
+          )}
 
           <div className="field-row">
             <label className="field">

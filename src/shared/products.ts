@@ -106,6 +106,7 @@ export const PRODUCTS: Product[] = [
   p('dill', 'Укроп', 'greens', 'g', 'fridge', { fridge: 5, freezer: 180 }, { pack: 30 }),
   p('parsley', 'Петрушка', 'greens', 'g', 'fridge', { fridge: 5, freezer: 180 }, { pack: 30 }),
   p('cilantro', 'Кинза', 'greens', 'g', 'fridge', { fridge: 5 }, { pack: 30 }),
+  p('mint', 'Мята', 'greens', 'g', 'fridge', { fridge: 10 }, { pack: 30, aliases: ['свежая мята', 'мята перечная'] }),
   p('lettuce', 'Салат листовой', 'greens', 'g', 'fridge', { fridge: 5 }, { each: 150, aliases: ['салат', 'айсберг', 'романо', 'руккола'] }),
   p('spinach', 'Шпинат', 'greens', 'g', 'fridge', { fridge: 4, freezer: 240 }, { pack: 125 }),
   // Фрукты

@@ -18,6 +18,7 @@ export interface ItemDraftInput {
   purchasedAt: string;
   opened?: boolean;
   source: ItemSource;
+  nutriments?: import('../data/types').Nutriments;
 }
 
 /** Собирает продукт холодильника, заполняя недостающее из справочника */
@@ -45,6 +46,7 @@ export function makeItem(input: ItemDraftInput): InventoryItem {
     isEstimate,
     source: input.source,
     createdAt: Date.now(),
+    nutriments: input.nutriments,
   };
 }
 

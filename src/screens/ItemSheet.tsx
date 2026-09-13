@@ -51,6 +51,46 @@ export function ItemSheet({ item, onClose }: { item: InventoryItem | null; onClo
           <input className="input" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
         </label>
 
+        {item.nutriments && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: 6,
+              background: 'var(--surface-2)',
+              padding: '8px 10px',
+              borderRadius: 12,
+              textAlign: 'center',
+              fontSize: 12,
+            }}
+          >
+            <div>
+              <b style={{ display: 'block', fontSize: 13, color: 'var(--brand)' }}>
+                {item.nutriments.kcal ?? '—'}
+              </b>
+              <span className="muted" style={{ fontSize: 10 }}>ккал/100г</span>
+            </div>
+            <div>
+              <b style={{ display: 'block', fontSize: 13 }}>
+                {item.nutriments.proteins ?? '—'}г
+              </b>
+              <span className="muted" style={{ fontSize: 10 }}>Белки</span>
+            </div>
+            <div>
+              <b style={{ display: 'block', fontSize: 13 }}>
+                {item.nutriments.fat ?? '—'}г
+              </b>
+              <span className="muted" style={{ fontSize: 10 }}>Жиры</span>
+            </div>
+            <div>
+              <b style={{ display: 'block', fontSize: 13 }}>
+                {item.nutriments.carbs ?? '—'}г
+              </b>
+              <span className="muted" style={{ fontSize: 10 }}>Углеводы</span>
+            </div>
+          </div>
+        )}
+
         <div className="field-row">
           <label className="field">
             <span>Количество</span>

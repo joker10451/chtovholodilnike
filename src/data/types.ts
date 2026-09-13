@@ -4,6 +4,13 @@ import type { ItemUnit } from '../shared/units';
 
 export type ItemSource = 'manual' | 'photo' | 'receipt' | 'text' | 'leftover' | 'barcode';
 
+export interface Nutriments {
+  kcal?: number;
+  proteins?: number;
+  fat?: number;
+  carbs?: number;
+}
+
 export interface InventoryItem {
   id: string;
   name: string;
@@ -18,6 +25,7 @@ export interface InventoryItem {
   isEstimate: boolean;
   source: ItemSource;
   createdAt: number;
+  nutriments?: Nutriments;
 }
 
 /** Общие настройки дома — синхронизируются между телефонами */
