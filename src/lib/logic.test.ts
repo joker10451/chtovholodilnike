@@ -8,6 +8,7 @@ import { estimateExpiry, freshness, stickerText } from '../shared/freshness';
 import { guessProductKey, PRODUCTS } from '../shared/products';
 import { BASE_RECIPES } from '../shared/recipes';
 import { convert, formatQty } from '../shared/units';
+import { mapCategories, parseQuantity } from './barcode';
 import { planDeduction } from './cooking';
 import { matchRecipe, onShelf, rankRecipes, type MatchContext } from './matching';
 import { parseProductsText } from './parseText';
@@ -245,5 +246,24 @@ describe('рацион на неделю', () => {
     });
 
     expect(count).toBeGreaterThan(0);
+  });
+
+  describe('barcode scanner logic', () => {
+    it('парсит количество и единицы из строк упаковок', () => {
+      expect(parseQuantity('250 г')).toEqual({ qty: 250, unit: 'g' });
+      expect(parseQuantity('1.5 л')).toEqual({ qty: 1500, unit: 'ml' });
+      expect(parseQuantity('800g')).toEqual({ qty: 800, unit: 'g' });
+      expect(parseQuantity('500 мл')).toEqual({ qty: 500, unit: 'ml' });
+      expect(parseQuantity('10 шт')).toEqual({ qty: 10, unit: 'pcs' });
+      expect(parseQuantity('')).toEqual({ qty: 1, unit: 'pcs' });
+    });
+
+    it('корректно определяет категории по тегам Open Food Facts', () => {
+      expect(mapCategories(['en:dairies', 'en:fermented-foods', 'en:yogurts'])).toBe('dairy');
+      expect(mapCategories(['en:meats', 'en:pork'])).toBe('meat');
+      expect(mapCategories(['en:fresh-vegetables', 'en:tomatoes'])).toBe('vegetables');
+      expect(mapCategories(['en:fruits', 'en:apples'])).toBe('fruits');
+      expect(mapCategories(['en:beverages', 'en:orange-juice'])).toBe('drinks');
+    });
   });
 });

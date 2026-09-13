@@ -6,8 +6,9 @@ import { enqueueScan, processScanQueue, removeScan, retryScan } from '../data/sc
 import type { ScanJob, ScanMode } from '../data/types';
 import { shrinkPhoto } from '../lib/image';
 import { go, href } from '../router';
+import { BarcodeScanner } from './BarcodeScanner';
 
-const MAX_PHOTOS: Record<ScanMode, number> = { shelf: 6, receipt: 4 };
+const MAX_PHOTOS: Record<ScanMode, number> = { shelf: 6, barcode: 1, receipt: 4 };
 
 export function Scan() {
   const online = useOnline();
@@ -44,69 +45,86 @@ export function Scan() {
 
   return (
     <main className="screen">
-      <Header title="Скан" sub={mode === 'shelf' ? 'Сфотографируйте каждую полку по очереди' : 'Сфотографируйте чек целиком, чтобы был виден весь список'} />
+      <Header
+        title="Скан"
+        sub={
+          mode === 'barcode'
+            ? 'Мгновенное распознавание продуктов по штрихкоду'
+            : mode === 'shelf'
+            ? 'Сфотографируйте каждую полку по очереди'
+            : 'Сфотографируйте чек целиком, чтобы был виден весь список'
+        }
+      />
       <Segmented<ScanMode>
         value={mode}
         onChange={(m) => { setMode(m); setPhotos([]); }}
-        options={[{ value: 'shelf', label: 'Полки холодильника' }, { value: 'receipt', label: 'Чек из магазина' }]}
+        options={[
+          { value: 'shelf', label: 'Полки' },
+          { value: 'barcode', label: 'Штрихкод' },
+          { value: 'receipt', label: 'Чек' },
+        ]}
       />
 
-      <div className="stack-lg">
-        {photos.length > 0 && (
-          <div className="shots">
-            {previews.map((url, i) => (
-              <div key={url} className="shot">
-                <img src={url} alt={`Фото ${i + 1}`} />
-                <button aria-label="Убрать фото" onClick={() => setPhotos(photos.filter((_, j) => j !== i))}>×</button>
-              </div>
-            ))}
-          </div>
-        )}
+      {mode === 'barcode' ? (
+        <BarcodeScanner />
+      ) : (
+        <div className="stack-lg">
+          {photos.length > 0 && (
+            <div className="shots">
+              {previews.map((url, i) => (
+                <div key={url} className="shot">
+                  <img src={url} alt={`Фото ${i + 1}`} />
+                  <button aria-label="Убрать фото" onClick={() => setPhotos(photos.filter((_, j) => j !== i))}>×</button>
+                </div>
+              ))}
+            </div>
+          )}
 
-        <div className="capture">
-          <label className={`btn ${photos.length ? 'ghost' : ''}`} aria-disabled={full}>
-            {busy ? <Spinner /> : <IconCamera />} {photos.length ? 'Ещё фото' : 'Снять'}
-            <input type="file" accept="image/*" capture="environment" disabled={full || busy} onChange={(e) => { void addFiles(e.target.files); e.target.value = ''; }} />
-          </label>
-          <label className="btn ghost" aria-disabled={full}>
-            <IconImage /> Из галереи
-            <input type="file" accept="image/*" multiple disabled={full || busy} onChange={(e) => { void addFiles(e.target.files); e.target.value = ''; }} />
-          </label>
+          <div className="capture">
+            <label className={`btn ${photos.length ? 'ghost' : ''}`} aria-disabled={full}>
+              {busy ? <Spinner /> : <IconCamera />} {photos.length ? 'Ещё фото' : 'Снять'}
+              <input type="file" accept="image/*" capture="environment" disabled={full || busy} onChange={(e) => { void addFiles(e.target.files); e.target.value = ''; }} />
+            </label>
+            <label className="btn ghost" aria-disabled={full}>
+              <IconImage /> Из галереи
+              <input type="file" accept="image/*" multiple disabled={full || busy} onChange={(e) => { void addFiles(e.target.files); e.target.value = ''; }} />
+            </label>
+          </div>
+
+          {photos.length > 0 && (
+            <button className="btn block" onClick={submit}>
+              {online ? `Распознать ${photos.length} фото` : `Сохранить ${photos.length} фото до появления интернета`}
+            </button>
+          )}
+
+          {photos.length === 0 && (
+            <div className="card flat stack">
+              <b>{mode === 'shelf' ? 'Как снимать, чтобы нейросеть всё нашла' : 'Как снимать чек'}</b>
+              {mode === 'shelf' ? (
+                <ul className="small muted" style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 4 }}>
+                  <li>Одна полка — одно фото, дверца — отдельным снимком.</li>
+                  <li>Поверните упаковки этикетками к камере, если не трудно.</li>
+                  <li>Включите свет, снимайте без вспышки.</li>
+                  <li>Дату «годен до» нейросеть прочитает, если она видна крупно.</li>
+                </ul>
+              ) : (
+                <p className="small muted">Разгладьте чек и снимайте сверху. Длинный чек можно снять в 2–3 фото. Бытовая химия и пакеты в список не попадут.</p>
+              )}
+            </div>
+          )}
+
+          {!online && (
+            <div className="notice">Нет интернета. Фото можно снять сейчас — нейросеть разберёт их, когда телефон подключится (например, через VPN).</div>
+          )}
+
+          {pending.length > 0 && (
+            <div className="stack">
+              <div className="section-label">Распознавание</div>
+              <div className="list">{pending.map((job) => <ScanRow key={job.id} job={job} online={online} />)}</div>
+            </div>
+          )}
         </div>
-
-        {photos.length > 0 && (
-          <button className="btn block" onClick={submit}>
-            {online ? `Распознать ${photos.length} фото` : `Сохранить ${photos.length} фото до появления интернета`}
-          </button>
-        )}
-
-        {photos.length === 0 && (
-          <div className="card flat stack">
-            <b>{mode === 'shelf' ? 'Как снимать, чтобы нейросеть всё нашла' : 'Как снимать чек'}</b>
-            {mode === 'shelf' ? (
-              <ul className="small muted" style={{ margin: 0, paddingLeft: 18, display: 'grid', gap: 4 }}>
-                <li>Одна полка — одно фото, дверца — отдельным снимком.</li>
-                <li>Поверните упаковки этикетками к камере, если не трудно.</li>
-                <li>Включите свет, снимайте без вспышки.</li>
-                <li>Дату «годен до» нейросеть прочитает, если она видна крупно.</li>
-              </ul>
-            ) : (
-              <p className="small muted">Разгладьте чек и снимайте сверху. Длинный чек можно снять в 2–3 фото. Бытовая химия и пакеты в список не попадут.</p>
-            )}
-          </div>
-        )}
-
-        {!online && (
-          <div className="notice">Нет интернета. Фото можно снять сейчас — нейросеть разберёт их, когда телефон подключится (например, через VPN).</div>
-        )}
-
-        {pending.length > 0 && (
-          <div className="stack">
-            <div className="section-label">Распознавание</div>
-            <div className="list">{pending.map((job) => <ScanRow key={job.id} job={job} online={online} />)}</div>
-          </div>
-        )}
-      </div>
+      )}
     </main>
   );
 }

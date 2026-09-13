@@ -2,7 +2,7 @@ import type { Recognition } from '../shared/aiSchemas';
 import type { Category, Location } from '../shared/products';
 import type { ItemUnit } from '../shared/units';
 
-export type ItemSource = 'manual' | 'photo' | 'receipt' | 'text' | 'leftover';
+export type ItemSource = 'manual' | 'photo' | 'receipt' | 'text' | 'leftover' | 'barcode';
 
 export interface InventoryItem {
   id: string;
@@ -74,7 +74,7 @@ export interface SyncRecord<T = unknown> {
   dirty: 0 | 1;
 }
 
-export type ScanMode = 'shelf' | 'receipt';
+export type ScanMode = 'shelf' | 'barcode' | 'receipt';
 export type ScanStatus = 'queued' | 'processing' | 'ready' | 'error' | 'applied';
 
 /** Фото, ожидающие распознавания. Хранятся только на этом телефоне */
