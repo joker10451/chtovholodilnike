@@ -1,9 +1,9 @@
 // Подписка телефона на утренние уведомления — без входа по почте.
 // Телефон присылает код доступа, адрес push-подписки и сроки продуктов (только названия и даты).
 // Хранится в Supabase, доступ к таблице есть только у сервера.
-import { createClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 import { checkAccess } from './access.js';
+import { serverDb } from './store.js';
 
 /** Сервисы push браузеров. На другие адреса сервер ничего не отправляет */
 const PUSH_HOSTS = ['web.push.apple.com', 'fcm.googleapis.com', 'push.services.mozilla.com', 'notify.windows.com'];
@@ -38,19 +38,12 @@ function json(status: number, body: unknown): Response {
   });
 }
 
-export function pushStore() {
-  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) return null;
-  return createClient(url, serviceKey, { auth: { persistSession: false } });
-}
-
 export async function handlePushRequest(request: Request): Promise<Response> {
   if (request.method !== 'POST' && request.method !== 'DELETE') return json(405, { error: 'Используйте POST или DELETE' });
   const denied = checkAccess(request);
   if (denied) return denied;
 
-  const db = pushStore();
+  const db = serverDb();
   if (!db) return json(500, { error: 'Уведомления не настроены на сервере: нет SUPABASE_URL или SUPABASE_SERVICE_ROLE_KEY.' });
 
   let body: unknown;

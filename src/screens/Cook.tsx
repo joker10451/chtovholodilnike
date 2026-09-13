@@ -10,6 +10,7 @@ import { planDeduction } from '../lib/cooking';
 import { makeItem } from '../lib/convert';
 import { go, href } from '../router';
 import { todayISO } from '../shared/dates';
+import { daysLeft, RESCUE_DAYS } from '../shared/freshness';
 import { formatQty } from '../shared/units';
 
 export function Cook({ id, portions }: { id: string; portions: number }) {
@@ -166,7 +167,12 @@ function FinishSheet({ open, onClose, recipeId, portions }: { open: boolean; onC
     }
     await saveItems(toSave);
     if (toDelete.length) await deleteRecords(toDelete);
-    await logCooking({ recipeId: recipe.id, title: recipe.title, portions, cookedAt: Date.now(), ...(rating ? { rating } : {}) });
+    // Что из подходящего к концу срока ушло в блюдо — для итогов месяца
+    const rescued = [...new Set(chosen
+      .map((l) => ctx.items.find((i) => i.id === l.itemId)!)
+      .filter((i) => { const d = daysLeft(i.expiresAt, todayISO()); return d !== null && d >= 0 && d <= RESCUE_DAYS; })
+      .map((i) => i.name))];
+    await logCooking({ recipeId: recipe.id, title: recipe.title, portions, cookedAt: Date.now(), ...(rating ? { rating } : {}), ...(rescued.length ? { rescued } : {}) });
     toast('Приятного аппетита! Холодильник обновлён');
     go(href('fridge'), true);
   }

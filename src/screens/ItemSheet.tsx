@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Sheet, Stepper, toast, useToday } from '../components/ui';
-import { deleteRecords, saveItem } from '../data/repo';
+import { finishItem, saveItem } from '../data/repo';
 import type { InventoryItem } from '../data/types';
-import { estimateExpiry } from '../shared/freshness';
+import { daysLeft, estimateExpiry } from '../shared/freshness';
 import { getProduct, LOCATION_LABELS, LOCATIONS, type Location } from '../shared/products';
 import { UNIT_LABELS, type ItemUnit } from '../shared/units';
 
@@ -11,7 +11,8 @@ const UNITS: ItemUnit[] = ['g', 'ml', 'pcs', 'portion'];
 export function ItemSheet({ item, onClose }: { item: InventoryItem | null; onClose: () => void }) {
   const today = useToday();
   const [draft, setDraft] = useState<InventoryItem | null>(item);
-  useEffect(() => setDraft(item), [item]);
+  const [asking, setAsking] = useState(false);
+  useEffect(() => { setDraft(item); setAsking(false); }, [item]);
   if (!item || !draft) return <Sheet open={false} onClose={onClose}>{null}</Sheet>;
 
   const product = getProduct(draft.productKey);
@@ -31,15 +32,19 @@ export function ItemSheet({ item, onClose }: { item: InventoryItem | null; onClo
 
   async function save() {
     if (!draft) return;
-    if (draft.qty <= 0) return finish();
+    if (draft.qty <= 0) return mayBeWasted ? setAsking(true) : finish();
     await saveItem({ ...draft, name: draft.name.trim() || item!.name });
     toast('Сохранено');
     onClose();
   }
 
-  async function finish() {
-    await deleteRecords([item!.id]);
-    toast(`${item!.name}: закончилось`);
+  // Просроченное или истекающее сегодня могли и выбросить — спросим, это пойдёт в итоги месяца
+  const left = daysLeft(item.expiresAt, today);
+  const mayBeWasted = left !== null && left <= 0;
+
+  async function finish(wasted = false) {
+    await finishItem(item!, wasted);
+    toast(wasted ? `${item!.name}: записали в выброшенное` : `${item!.name}: закончилось`);
     onClose();
   }
 
@@ -136,10 +141,20 @@ export function ItemSheet({ item, onClose }: { item: InventoryItem | null; onClo
           <p className="small muted">После вскрытия {product.name.toLowerCase()} хранится около {product.opened} дн. — срок пересчитан.</p>
         )}
 
-        <div className="sheet-footer">
-          <button className="btn danger" style={{ flex: 1 }} onClick={finish}>Закончилось</button>
-          <button className="btn primary" style={{ flex: 2 }} onClick={save}>Сохранить</button>
-        </div>
+        {asking ? (
+          <div className="sheet-footer" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+            <b>Съели или пришлось выбросить?</b>
+            <div className="row-gap">
+              <button className="btn ghost" onClick={() => void finish(false)}>Съели</button>
+              <button className="btn danger" onClick={() => void finish(true)}>Выбросили</button>
+            </div>
+          </div>
+        ) : (
+          <div className="sheet-footer">
+            <button className="btn danger" style={{ flex: 1 }} onClick={() => (mayBeWasted ? setAsking(true) : void finish())}>Закончилось</button>
+            <button className="btn primary" style={{ flex: 2 }} onClick={save}>Сохранить</button>
+          </div>
+        )}
       </div>
     </Sheet>
   );

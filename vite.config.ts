@@ -8,6 +8,7 @@ const DEV_ROUTES: Record<string, [string, string]> = {
   '/api/ai': ['/server/ai.ts', 'handleAiRequest'],
   '/api/barcode': ['/server/barcode.ts', 'handleBarcodeRequest'],
   '/api/push': ['/server/push.ts', 'handlePushRequest'],
+  '/api/backup': ['/server/backup.ts', 'handleBackupRequest'],
 };
 
 /** В режиме разработки отвечает на /api/* тем же кодом, что и функции на Vercel */
@@ -47,7 +48,7 @@ export default defineConfig(({ mode }) => {
   for (const [k, v] of Object.entries(loadEnv(mode, process.cwd(), ''))) process.env[k] ??= v;
 
   return {
-    define: { __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.5.0') },
+    define: { __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.6.0') },
     server: { host: true },
     plugins: [
       react(),

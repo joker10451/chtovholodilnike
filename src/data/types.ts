@@ -48,6 +48,18 @@ export interface CookLogEntry {
   rating?: 1 | 3 | 5;
   /** Блюдо оценили, не готовя по приложению */
   ratedOnly?: boolean;
+  /** Продукты с подходящим к концу сроком, которые ушли в блюдо */
+  rescued?: string[];
+}
+
+/** Продукт выбросили — для итогов месяца и подсказок «берите меньше» */
+export interface WasteEntry {
+  id: string;
+  name: string;
+  productKey: string | null;
+  qty: number;
+  unit: ItemUnit;
+  at: number;
 }
 
 export interface ShoppingItem {
@@ -78,7 +90,7 @@ export interface PlannedMeal {
   createdAt: number;
 }
 
-export type RecordKind = 'item' | 'recipe' | 'settings' | 'cooklog' | 'shopping' | 'plan' | 'barcode';
+export type RecordKind = 'item' | 'recipe' | 'settings' | 'cooklog' | 'shopping' | 'plan' | 'barcode' | 'waste';
 
 /** Любая синхронизируемая запись. dirty = 1 — ещё не отправлена на сервер */
 export interface SyncRecord<T = unknown> {
@@ -118,4 +130,7 @@ export interface DeviceMeta {
   lastBackupAt: number | null;
   /** Последние сроки, отправленные серверу уведомлений — чтобы не слать одно и то же */
   pushScheduleHash?: string | null;
+  /** Облачная копия: когда сохранили и отпечаток данных, чтобы не сохранять одно и то же */
+  lastCloudBackupAt?: number | null;
+  cloudBackupHash?: string | null;
 }

@@ -7,19 +7,24 @@ import { saveSettings, useCookLog, useMeta, useSettings } from '../data/repo';
 import {
   createHousehold, joinHousehold, sendLoginCode, signOut, syncNow, useSyncStatus, verifyLoginCode,
 } from '../data/sync';
-import type { SyncRecord } from '../data/types';
 import { AiRequestError, recognize } from '../lib/ai';
+import { applyBackupRecords, backupFile, formatBackupDate, localRecords, parseBackupFile, saveCloudBackup } from '../lib/cloudBackup';
 import { usePwaUpdate } from '../lib/pwaUpdate';
+import { monthKey } from '../lib/stats';
+import { href } from '../router';
 import { syncConfigured } from '../lib/supabase';
 import { todayISO } from '../shared/dates';
 import { PRODUCTS } from '../shared/products';
 import { plural } from './Fridge';
+import { CloudRestoreSheet } from './CloudRestoreSheet';
 import { NotificationsSection } from './NotificationsSection';
 
 export function Settings() {
   const settings = useSettings();
   const meta = useMeta();
   const cooked = useCookLog();
+  const thisMonth = monthKey(Date.now());
+  const cookedThisMonth = cooked?.filter((e) => !e.ratedOnly && monthKey(e.cookedAt) === thisMonth).length ?? 0;
   const online = useOnline();
   const { hasUpdate, isUpdating, applyUpdate, checkForUpdate } = usePwaUpdate();
   const [staplesOpen, setStaplesOpen] = useState(false);
@@ -93,6 +98,21 @@ export function Settings() {
           </button>
         </section>
 
+        <section className="stack">
+          <div className="section-label">Итоги</div>
+          <a className="card flat row-gap settings-link" href={href('stats')}>
+            <div className="grow">
+              <b>Итоги месяца</b>
+              <div className="small muted">
+                {cookedThisMonth > 0
+                  ? `В этом месяце: ${cookedThisMonth} ${plural(cookedThisMonth, 'блюдо', 'блюда', 'блюд')} · что спасли и что выбросили`
+                  : 'Что готовили, сколько продуктов спасли и что выбросили'}
+              </div>
+            </div>
+            <IconBack className="chevron" />
+          </a>
+        </section>
+
         <SyncSection />
 
         <NotificationsSection />
@@ -103,7 +123,7 @@ export function Settings() {
             <div>
               <b>Код доступа</b>
               <div className="small muted">
-                {meta.accessCode ? 'Сохранён на этом телефоне. Введите новый, чтобы заменить.' : 'Нужен, чтобы нейросеть читала упаковки, чеки и придумывала рецепты.'}
+                {meta.accessCode ? 'Сохранён на этом телефоне. Введите новый, чтобы заменить.' : 'Нужен для нейросети, уведомлений и копии в облаке.'}
               </div>
             </div>
             <form className="row-gap" onSubmit={(e) => { e.preventDefault(); if (code.trim()) void saveCode(); }}>
@@ -141,11 +161,6 @@ export function Settings() {
 
         <BackupSection />
 
-        {(cooked?.length ?? 0) > 0 && (
-          <p className="small muted" style={{ textAlign: 'center' }}>
-            Приготовлено по рецептам: {cooked!.length} {plural(cooked!.length, 'блюдо', 'блюда', 'блюд')}
-          </p>
-        )}
       </div>
 
       <StaplesSheet open={staplesOpen} onClose={() => setStaplesOpen(false)} selected={settings.staples} />
@@ -273,10 +288,24 @@ function SyncSection() {
 
 function BackupSection() {
   const meta = useMeta();
+  const online = useOnline();
+  const [saving, setSaving] = useState(false);
+  const [restoreOpen, setRestoreOpen] = useState(false);
+
+  async function saveNow() {
+    setSaving(true);
+    try {
+      await saveCloudBackup();
+      toast('Копия сохранена в облаке');
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function exportData() {
-    const records = await db.records.filter((r) => !r.deleted).toArray();
-    const blob = new Blob([JSON.stringify({ app: 'holodilnik', version: 1, exportedAt: new Date().toISOString(), records }, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(backupFile(await localRecords()), null, 2)], { type: 'application/json' });
     const file = new File([blob], `holodilnik-${new Date().toISOString().slice(0, 10)}.json`, { type: 'application/json' });
     if (navigator.canShare?.({ files: [file] })) {
       try {
@@ -295,16 +324,14 @@ function BackupSection() {
     await setMeta({ lastBackupAt: Date.now() });
   }
 
-  async function importData(file: File | undefined) {
-    if (!file) return;
+  async function importData(input: File | undefined) {
+    if (!input) return;
     try {
-      const parsed = JSON.parse(await file.text()) as { app?: string; records?: SyncRecord[] };
-      if (parsed.app !== 'holodilnik' || !Array.isArray(parsed.records)) throw new Error();
-      const products = parsed.records.filter((r) => r.kind === 'item').length;
-      if (!confirm(`Восстановить копию? В ней продуктов: ${products}, всего записей: ${parsed.records.length}. Совпадающие записи на телефоне заменятся.`)) return;
-      const now = Date.now();
-      await db.records.bulkPut(parsed.records.map((r) => ({ ...r, updatedAt: now, dirty: 1 as const })));
-      toast(`Восстановлено записей: ${parsed.records.length}`);
+      const { records } = parseBackupFile(await input.text());
+      const products = records.filter((r) => r.kind === 'item').length;
+      if (!confirm(`Восстановить копию? В ней продуктов: ${products}, всего записей: ${records.length}. Совпадающие записи на телефоне заменятся.`)) return;
+      await applyBackupRecords(records);
+      toast(`Восстановлено записей: ${records.length}`);
       void syncNow();
     } catch {
       toast('Это не файл резервной копии приложения');
@@ -316,21 +343,40 @@ function BackupSection() {
       <div className="section-label">Резервная копия</div>
       <div className="card flat stack">
         <div>
-          <b>Файл с продуктами, рецептами и настройками</b>
+          <b>Копия в облаке</b>
+          <div className="small muted">
+            {!meta.accessCode
+              ? 'Включится, когда введёте код доступа выше: копия шифруется им и сохраняется сама раз в день.'
+              : meta.lastCloudBackupAt
+                ? `Сохраняется сама раз в день, зашифрована кодом доступа. Последняя: ${formatBackupDate(meta.lastCloudBackupAt)}`
+                : 'Сохраняется сама раз в день, когда есть интернет. Зашифрована кодом доступа — без него копию не прочитать.'}
+          </div>
+        </div>
+        <div className="field-row">
+          <button className="btn small ghost" onClick={saveNow} disabled={!meta.accessCode || !online || saving}>
+            {saving ? <Spinner /> : 'Сохранить сейчас'}
+          </button>
+          <button className="btn small ghost" onClick={() => setRestoreOpen(true)} disabled={!meta.accessCode || !online}>Восстановить</button>
+        </div>
+      </div>
+      <div className="card flat stack">
+        <div>
+          <b>Файл</b>
           <div className="small muted">
             {meta.lastBackupAt
-              ? `Последняя копия: ${new Date(meta.lastBackupAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}`
-              : 'Копию ещё не сохраняли. Сохраните в «Файлы» или отправьте себе в мессенджер — пригодится при смене телефона.'}
+              ? `Последний файл: ${new Date(meta.lastBackupAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}`
+              : 'Можно сохранить копию в «Файлы» или отправить себе в мессенджер.'}
           </div>
         </div>
         <div className="field-row">
           <button className="btn small ghost" onClick={exportData}>Сохранить файл</button>
           <label className="btn small ghost file-btn">
-            Восстановить
+            Из файла
             <input type="file" accept="application/json,.json" onChange={(e) => { void importData(e.target.files?.[0]); e.target.value = ''; }} />
           </label>
         </div>
       </div>
+      <CloudRestoreSheet open={restoreOpen} onClose={() => setRestoreOpen(false)} />
     </section>
   );
 }

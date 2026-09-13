@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { IconGlobe, IconScan, IconSpark } from '../components/icons';
+import { IconCamera, IconGlobe, IconScan, IconSpark } from '../components/icons';
 import { Empty, Header, Plate, Ring, Segmented } from '../components/ui';
 import { useAllRecipes } from '../data/repo';
 import { useMatchContext } from '../hooks';
@@ -12,6 +12,7 @@ import { plural } from './Fridge';
 const TAG_CHIPS = [
   { id: 'all', label: 'Все' },
   { id: 'favorite', label: 'Любимые' },
+  { id: 'mine', label: 'Мои' },
   { id: 'завтрак', label: 'Завтраки' },
   { id: 'ужин', label: 'Обед и ужин' },
   { id: 'напиток', label: 'Смузи и напитки' },
@@ -57,6 +58,7 @@ export function Recipes() {
     if (tag === 'all') return true;
     if (tag === 'quick') return m.recipe.time <= 25;
     if (tag === 'favorite') return isFavorite(tasteOf(ctx?.tastes, m.recipe.id));
+    if (tag === 'mine') return m.recipe.source === 'ai';
     return m.recipe.tags.includes(tag);
   });
 
@@ -173,6 +175,8 @@ export function Recipes() {
           >
             {tag === 'favorite' && !q
               ? 'Оцените блюдо после готовки — оценка «Вкусно» добавит его сюда.'
+              : tag === 'mine' && !q
+              ? 'Здесь будут семейные рецепты: сфотографируйте тетрадь, вставьте ссылку или текст из заметок.'
               : q
               ? 'Попробуйте другое название или найдите рецепт в каталоге.'
               : !hasItems && shelf !== 'all'
@@ -186,6 +190,7 @@ export function Recipes() {
 
       <div className="stack" style={{ marginTop: 18 }}>
         <div className="section-label">Больше рецептов</div>
+        <a className="btn ghost block" href={`${href('chef')}?mode=import`}><IconCamera /> Добавить свой рецепт</a>
         <a className="btn ghost block" href={href('chef')}><IconSpark /> Придумать из того, что есть</a>
         <a className="btn ghost block" href={href('catalog')}><IconGlobe /> Каталог с переводом</a>
       </div>

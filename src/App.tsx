@@ -4,6 +4,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Spinner, ToastHost, useOnline } from './components/ui';
 import { UpdatePrompt } from './components/UpdatePrompt';
 import { useItems, useMetaLoading, useShoppingList } from './data/repo';
+import { maybeAutoBackup } from './lib/cloudBackup';
 import { schedulePushUpdate } from './lib/push';
 import { processScanQueue, recoverScans } from './data/scanQueue';
 import { startSync } from './data/sync';
@@ -24,6 +25,7 @@ const screens = {
   Shopping: () => import('./screens/Shopping').then((m) => ({ default: m.Shopping })),
   Chef: () => import('./screens/Chef').then((m) => ({ default: m.Chef })),
   Settings: () => import('./screens/Settings').then((m) => ({ default: m.Settings })),
+  Stats: () => import('./screens/Stats').then((m) => ({ default: m.Stats })),
 };
 const Recipes = lazy(screens.Recipes);
 const RecipeDetail = lazy(screens.RecipeDetail);
@@ -35,6 +37,7 @@ const Plan = lazy(screens.Plan);
 const Shopping = lazy(screens.Shopping);
 const Chef = lazy(screens.Chef);
 const Settings = lazy(screens.Settings);
+const Stats = lazy(screens.Stats);
 
 /** Когда приложение открылось и ничего не делает — заранее загружаем частые экраны, чтобы переходы были мгновенными */
 function preloadScreens() {
@@ -54,6 +57,7 @@ const TAB_OF: Record<string, string> = {
   shopping: 'shopping',
   chef: 'recipes',
   settings: 'fridge',
+  stats: 'fridge',
 };
 
 export function App() {
@@ -67,6 +71,13 @@ export function App() {
   useEffect(() => startSync(), []);
   // Сроки для утренних уведомлений: обновляем на сервере, когда меняются продукты или вернулся интернет
   useEffect(() => { if (items) schedulePushUpdate(); }, [items]);
+  // Облачная копия: проверяем вскоре после запуска и при каждом возвращении в приложение
+  useEffect(() => {
+    const check = () => { if (document.visibilityState === 'visible') void maybeAutoBackup(); };
+    const timer = setTimeout(check, 8000);
+    document.addEventListener('visibilitychange', check);
+    return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', check); };
+  }, []);
   useEffect(() => {
     const onOnline = () => schedulePushUpdate(1000);
     window.addEventListener('online', onOnline);
@@ -101,6 +112,7 @@ export function App() {
     case 'shopping': screen = <Shopping />; break;
     case 'chef': screen = <Chef />; break;
     case 'settings': screen = <Settings />; break;
+    case 'stats': screen = <Stats />; break;
     default: screen = <Fridge />;
   }
   const showTabs = !['cook', 'recipe', 'catalog', 'scan', 'review'].includes(route.name);
@@ -109,7 +121,7 @@ export function App() {
   return (
     <div className="app">
       {!online && showTabs && (
-        <div className="offline-bar" role="status">Нет интернета · нейросеть и синхронизация подождут</div>
+        <div className="offline-bar" role="status">Нет интернета · нейросеть и копия в облаке подождут</div>
       )}
       <ErrorBoundary resetKey={route.name + route.params.join('/')}>
         <Suspense fallback={<main className="screen screen-loading"><Spinner /></main>}>{screen}</Suspense>

@@ -5,7 +5,7 @@ import { getItems, getSettings, saveRecipe } from '../data/repo';
 import { AiRequestError, generateRecipe } from '../lib/ai';
 import { generatedToRecipe } from '../lib/convert';
 import { shrinkPhoto, toImagePart } from '../lib/image';
-import { go, href } from '../router';
+import { go, href, useRoute } from '../router';
 import { todayISO } from '../shared/dates';
 import { daysLeft } from '../shared/freshness';
 import { getProduct } from '../shared/products';
@@ -18,7 +18,8 @@ const WISHES = ['Быстро, до 20 минут', 'Без духовки', 'Н
 
 export function Chef() {
   const online = useOnline();
-  const [mode, setMode] = useState<Mode>('invent');
+  const route = useRoute();
+  const [mode, setMode] = useState<Mode>(route.query.get('mode') === 'import' ? 'import' : 'invent');
   const [result, setResult] = useState<Recipe | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
@@ -120,14 +121,14 @@ function Import({ disabled, onResult }: { disabled: boolean; onResult: (r: Recip
 
   return (
     <div className="stack-lg">
-      <p className="muted">Вставьте ссылку на рецепт, его текст на любом языке или сфотографируйте страницу книги. Нейросеть переведёт, пересчитает меры в граммы и сохранит рецепт в приложение.</p>
+      <p className="muted">Сфотографируйте рецепт из тетради или книги, вставьте ссылку или текст из заметок — на любом языке. Нейросеть разберёт почерк, переведёт, пересчитает стаканы и ложки в граммы и сохранит рецепт в «Мои».</p>
       <label className="field">
         <span>Ссылка или текст</span>
         <textarea className="textarea" placeholder="https://… или текст рецепта" value={source} onChange={(e) => setSource(e.target.value)} />
       </label>
       <div className="capture" style={{ gridTemplateColumns: '1fr' }}>
         <label className="btn ghost">
-          <IconCamera /> {photos.length ? `Фото страниц: ${photos.length}` : 'Фото страницы книги'}
+          <IconCamera /> {photos.length ? `Фото страниц: ${photos.length}` : 'Фото тетради или книги'}
           <input type="file" accept="image/*" multiple onChange={async (e) => {
             const files = [...(e.target.files ?? [])].slice(0, 4);
             e.target.value = '';

@@ -6,7 +6,7 @@ import { estimateExpiry } from '../shared/freshness';
 import { convert, type ItemUnit } from '../shared/units';
 import type { Recipe } from '../shared/recipeTypes';
 import { db, DEFAULT_META, getMeta, newId } from './db';
-import type { CookLogEntry, DeviceMeta, HouseholdSettings, InventoryItem, PlannedMeal, RecordKind, ScanJob, ShoppingItem, SyncRecord } from './types';
+import type { CookLogEntry, DeviceMeta, HouseholdSettings, InventoryItem, PlannedMeal, RecordKind, ScanJob, ShoppingItem, SyncRecord, WasteEntry } from './types';
 import { getWeekDays } from '../shared/dates';
 
 export const SETTINGS_ID = 'settings';
@@ -111,6 +111,20 @@ export async function rateRecipe(recipeId: string, title: string, rating: 1 | 3 
     .sort((a, b) => b.data.cookedAt - a.data.cookedAt)[0];
   if (latest) await putRecord('cooklog', latest.id, { ...latest.data, id: latest.id, rating });
   else await logCooking({ recipeId, title, portions: 0, cookedAt: Date.now(), rating, ratedOnly: true });
+}
+
+/** Продукт закончился: съели — просто убираем, выбросили — ещё и записываем для итогов месяца */
+export async function finishItem(item: InventoryItem, wasted: boolean): Promise<void> {
+  if (wasted) {
+    const id = newId();
+    const entry: WasteEntry = { id, name: item.name, productKey: item.productKey, qty: item.qty, unit: item.unit, at: Date.now() };
+    await putRecord('waste', id, entry);
+  }
+  await deleteRecords([item.id]);
+}
+
+export function useWasteLog(): WasteEntry[] | undefined {
+  return useLiveQuery(() => liveOf<WasteEntry>('waste'), []);
 }
 
 export function useCookLog(): CookLogEntry[] | undefined {

@@ -11,6 +11,7 @@ import { matchRecipe, type IngredientMatch } from '../lib/matching';
 import { back, go, href } from '../router';
 import { getProduct } from '../shared/products';
 import { formatQty } from '../shared/units';
+import { FixRecipeSheet } from './FixRecipeSheet';
 import { plural } from './Fridge';
 
 const MARK: Record<IngredientMatch['state'], string> = { have: '✓', sub: '⇄', staple: '✓', partial: '½', missing: '×' };
@@ -23,6 +24,7 @@ export function RecipeDetail({ id }: { id: string }) {
   const recipe = useLiveQuery(() => getRecipe(id).then((r) => r ?? null), [id]);
   const ctx = useMatchContext();
   const [portions, setPortions] = useState<number | null>(null);
+  const [fixOpen, setFixOpen] = useState(false);
 
   const p = portions ?? recipe?.servings ?? 2;
   const match = useMemo(() => (recipe && ctx ? matchRecipe(ctx, recipe, p) : null), [recipe, ctx, p]);
@@ -157,9 +159,11 @@ export function RecipeDetail({ id }: { id: string }) {
 
         <div className="stack">
           <button className="btn block" onClick={() => go(`${href('cook', recipe.id)}?portions=${p}`)}>Начать готовить</button>
+          {recipe.source === 'ai' && <button className="btn ghost block" onClick={() => setFixOpen(true)}>Поправить рецепт</button>}
           {recipe.source === 'ai' && <button className="btn quiet" onClick={remove}>Удалить рецепт</button>}
         </div>
       </div>
+      {recipe.source === 'ai' && <FixRecipeSheet recipe={recipe} open={fixOpen} onClose={() => setFixOpen(false)} />}
     </main>
   );
 }

@@ -2,7 +2,7 @@
 // Запускается планировщиком Vercel (vercel.json → crons).
 import webpush from 'web-push';
 import { expiryDigest, localDate, type DigestItem } from './expiryDigest.js';
-import { pushStore } from './push.js';
+import { serverDb } from './store.js';
 
 interface DeviceRow {
   endpoint: string;
@@ -21,7 +21,7 @@ export async function handleExpiryCron(request: Request): Promise<Response> {
   const secret = process.env.CRON_SECRET;
   if (!secret || request.headers.get('authorization') !== `Bearer ${secret}`) return json(401, { error: 'Нет доступа' });
 
-  const db = pushStore();
+  const db = serverDb();
   const publicKey = process.env.VITE_VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
   if (!db || !publicKey || !privateKey) {

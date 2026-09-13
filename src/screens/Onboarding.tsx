@@ -3,6 +3,7 @@ import { Stepper } from '../components/ui';
 import { setMeta } from '../data/db';
 import { DEFAULT_SETTINGS, saveSettings } from '../data/repo';
 import { PRODUCTS } from '../shared/products';
+import { CloudRestoreSheet } from './CloudRestoreSheet';
 
 const STAPLE_OPTIONS = PRODUCTS.filter((p) => p.staple);
 
@@ -10,6 +11,7 @@ export function Onboarding() {
   const [servings, setServings] = useState(DEFAULT_SETTINGS.servings);
   const [staples, setStaples] = useState<Set<string>>(new Set(DEFAULT_SETTINGS.staples));
   const [timeLimit, setTimeLimit] = useState(DEFAULT_SETTINGS.timeLimit);
+  const [restoreOpen, setRestoreOpen] = useState(false);
 
   async function finish() {
     await saveSettings({ servings, staples: [...staples], timeLimit });
@@ -62,7 +64,14 @@ export function Onboarding() {
         </div>
 
         <button className="btn block" onClick={finish}>Начать</button>
+        <button className="btn ghost block" onClick={() => setRestoreOpen(true)}>Уже пользовались? Восстановить из облака</button>
       </div>
+      <CloudRestoreSheet
+        open={restoreOpen}
+        onClose={() => setRestoreOpen(false)}
+        askCode
+        onRestored={() => void setMeta({ onboarded: true })}
+      />
     </main>
   );
 }
