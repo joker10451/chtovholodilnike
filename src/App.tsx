@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { IconBook, IconCal, IconCart, IconFridge, IconScan } from './components/icons';
 import { ToastHost } from './components/ui';
+import { UpdatePrompt } from './components/UpdatePrompt';
 import { useMetaLoading, useShoppingList } from './data/repo';
 import { processScanQueue, recoverScans } from './data/scanQueue';
 import { startSync } from './data/sync';
@@ -117,6 +118,7 @@ export function App() {
         </nav>
       )}
       <ToastHost />
+      <UpdatePrompt />
     </div>
   );
 }

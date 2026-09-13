@@ -6,6 +6,7 @@ import {
   createHousehold, joinHousehold, sendLoginCode, signOut, syncNow, useSyncStatus, verifyLoginCode,
 } from '../data/sync';
 import type { SyncRecord } from '../data/types';
+import { usePwaUpdate } from '../lib/pwaUpdate';
 import { supabase } from '../lib/supabase';
 import { PRODUCTS } from '../shared/products';
 
@@ -13,6 +14,7 @@ export function Settings() {
   const settings = useSettings();
   const meta = useMeta();
   const cooked = useCookLog();
+  const { hasUpdate, applyUpdate, checkForUpdate } = usePwaUpdate();
   const [staplesOpen, setStaplesOpen] = useState(false);
   const [code, setCode] = useState<string | null>(null);
   const standalone = matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
@@ -77,36 +79,35 @@ export function Settings() {
                   {standalone ? 'Установлено на экран «Домой»' : 'Запущено в браузере'}
                 </div>
               </div>
-              <button
-                className="btn small ghost"
-                onClick={async () => {
-                  toast('Проверяю обновления…');
-                  try {
-                    if ('serviceWorker' in navigator) {
-                      const regs = await navigator.serviceWorker.getRegistrations();
-                      for (const reg of regs) {
-                        await reg.update();
-                      }
+              {hasUpdate ? (
+                <button
+                  className="btn small primary"
+                  onClick={() => void applyUpdate()}
+                >
+                  Обновить сейчас
+                </button>
+              ) : (
+                <button
+                  className="btn small ghost"
+                  onClick={async () => {
+                    toast('Проверяю обновления…');
+                    const found = await checkForUpdate();
+                    if (!found) {
+                      toast('У вас установлена последняя версия');
                     }
-                    if ('caches' in window) {
-                      const keys = await caches.keys();
-                      for (const k of keys) {
-                        if (k.includes('workbox') || k.includes('precache')) {
-                          await caches.delete(k);
-                        }
-                      }
-                    }
-                    window.location.reload();
-                  } catch {
-                    window.location.reload();
-                  }
-                }}
-              >
-                Обновить
-              </button>
+                  }}
+                >
+                  Проверить
+                </button>
+              )}
             </div>
+            {hasUpdate && (
+              <div className="notice info" style={{ margin: 0 }}>
+                ✨ Новая версия уже скачана! Нажмите «Обновить сейчас» для перезагрузки.
+              </div>
+            )}
             <p className="small muted">
-              Приложение обновляется автоматически при открытии. Кнопка «Обновить» принудительно очищает кэш и загружает свежую версию прямо сейчас.
+              Приложение проверяет наличие обновлений в фоне при каждом открытии и показывает всплывающее окно, когда готова новая версия.
             </p>
           </div>
         </section>
