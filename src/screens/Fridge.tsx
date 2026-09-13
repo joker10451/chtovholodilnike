@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { IconMore, IconPlus } from '../components/icons';
 import { CATEGORY_DOT, Empty, Header, Segmented, Sticker, useToday } from '../components/ui';
 import { useItems } from '../data/repo';
 import type { InventoryItem } from '../data/types';
-import { href, useRoute } from '../router';
+import { go, href, useRoute } from '../router';
 import { daysLeft, RESCUE_DAYS } from '../shared/freshness';
 import { LOCATION_LABELS, type Location } from '../shared/products';
 import { formatQty } from '../shared/units';
@@ -19,6 +19,19 @@ export function Fridge() {
   const [filter, setFilter] = useState<Filter>('all');
   const [editing, setEditing] = useState<InventoryItem | null>(null);
   const [adding, setAdding] = useState(route.query.get('add') === '1');
+
+  useEffect(() => {
+    if (route.query.get('add') === '1') {
+      setAdding(true);
+    }
+  }, [route.query]);
+
+  const handleCloseAdd = () => {
+    setAdding(false);
+    if (route.query.get('add') === '1') {
+      go(href('fridge'), true);
+    }
+  };
 
   const sorted = useMemo(
     () => [...(items ?? [])].sort((a, b) => (a.expiresAt ?? '9999').localeCompare(b.expiresAt ?? '9999') || a.name.localeCompare(b.name, 'ru')),
@@ -98,7 +111,7 @@ export function Fridge() {
       )}
 
       <ItemSheet item={editing} onClose={() => setEditing(null)} />
-      <AddSheet open={adding} onClose={() => setAdding(false)} />
+      <AddSheet open={adding} onClose={handleCloseAdd} />
     </main>
   );
 }

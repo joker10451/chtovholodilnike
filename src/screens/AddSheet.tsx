@@ -56,7 +56,7 @@ function AddOne({ onDone }: { onDone: () => void }) {
     <div className="stack-lg">
       <label className="field">
         <span>Что добавить</span>
-        <input className="input" list="products" placeholder="Например, творог" value={name} onChange={(e) => onName(e.target.value)} autoFocus />
+        <input className="input" list="products" placeholder="Например, творог" value={name} onChange={(e) => onName(e.target.value)} />
         <datalist id="products">{PRODUCTS.map((p) => <option key={p.key} value={p.name} />)}</datalist>
       </label>
       <div className="field-row">
@@ -89,7 +89,14 @@ function AddOne({ onDone }: { onDone: () => void }) {
         </label>
       </div>
       <p className="small muted">Без даты срок посчитается примерно по типу продукта.</p>
-      <button className="btn block" disabled={!name.trim()} onClick={add}>Добавить</button>
+      <div className="row-gap" style={{ marginTop: 8 }}>
+        <button type="button" className="btn quiet" style={{ flex: 1 }} onClick={onDone}>
+          Отмена
+        </button>
+        <button className="btn primary" style={{ flex: 2 }} disabled={!name.trim()} onClick={add}>
+          Добавить
+        </button>
+      </div>
     </div>
   );
 }
@@ -147,7 +154,14 @@ function AddList({ onDone }: { onDone: () => void }) {
           ))}
         </div>
         {lines.length === 0 && <p className="muted">Не нашёл продуктов в этой фразе.</p>}
-        <button className="btn block" disabled={n === 0} onClick={add}>Добавить {n}</button>
+        <div className="row-gap">
+          <button type="button" className="btn quiet" style={{ flex: 1 }} onClick={onDone}>
+            Отмена
+          </button>
+          <button className="btn primary" style={{ flex: 2 }} disabled={n === 0} onClick={add}>
+            Добавить {n}
+          </button>
+        </div>
         <button className="btn quiet" onClick={() => setLines(null)}>Изменить текст</button>
       </div>
     );
@@ -162,9 +176,14 @@ function AddList({ onDone }: { onDone: () => void }) {
         onChange={(e) => setText(e.target.value)}
       />
       <p className="small muted">Чтобы надиктовать, нажмите микрофон на клавиатуре iPhone.</p>
-      <button className="btn block" disabled={!text.trim() || busy} onClick={parse}>
-        {busy ? <Spinner /> : null} Разобрать
-      </button>
+      <div className="row-gap">
+        <button type="button" className="btn quiet" style={{ flex: 1 }} onClick={onDone}>
+          Отмена
+        </button>
+        <button className="btn primary" style={{ flex: 2 }} disabled={!text.trim() || busy} onClick={parse}>
+          {busy ? <Spinner /> : null} Разобрать
+        </button>
+      </div>
     </div>
   );
 }

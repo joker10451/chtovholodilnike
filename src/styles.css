@@ -101,6 +101,7 @@ img { max-width: 100%; display: block; }
 .btn.small { min-height: 36px; padding: 0 12px; border-radius: 11px; font-size: 13px; }
 .btn svg { width: 18px; height: 18px; }
 .icon-btn { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; color: var(--ink); }
+.icon-btn.primary { background: var(--brand); color: #fff; border-color: var(--brand); }
 .icon-btn svg { width: 20px; height: 20px; }
 
 .card { background: var(--surface); border-radius: 16px; padding: 14px; }
@@ -162,15 +163,27 @@ button.chip.on { background: var(--brand-soft); border-color: var(--brand); colo
 .empty p { max-width: 34ch; }
 
 /* ——— Шторка ——— */
-.scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 40; animation: fade .15s ease-out; }
-.sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; max-height: 92dvh; overflow-y: auto;
-  background: var(--ground); border-radius: 22px 22px 0 0;
-  padding: 10px 16px calc(var(--safe-bottom) + 18px); max-width: 640px; margin: 0 auto;
-  animation: rise .2s ease-out;
+.scrim {
+  position: fixed; inset: 0; background: var(--scrim); z-index: 40;
+  animation: fade .15s ease-out; cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
-.sheet .grab { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 12px; }
-.sheet h2 { font-size: 19px; margin-bottom: 14px; }
+.sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; max-height: 90dvh; overflow-y: auto;
+  overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  background: var(--ground); border-radius: 22px 22px 0 0;
+  padding: 10px 16px calc(var(--safe-bottom) + 20px); max-width: 640px; margin: 0 auto;
+  animation: rise .2s ease-out; box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18);
+}
+.sheet .grab { width: 44px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 12px; cursor: pointer; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.sheet-head h2 { font-size: 19px; margin: 0; flex: 1; }
+.sheet-close {
+  width: 32px; height: 32px; border-radius: 50%; border: 0;
+  background: var(--surface-2, rgba(0, 0, 0, 0.07)); color: var(--ink-2);
+  display: grid; place-items: center; font-size: 16px; font-weight: 700;
+  cursor: pointer; padding: 0; flex-shrink: 0; -webkit-tap-highlight-color: transparent;
+}
+.sheet-close:active { background: var(--line); transform: scale(0.94); }
 @keyframes fade { from { opacity: 0; } }
 @keyframes rise { from { transform: translateY(24px); opacity: .6; } }
 
