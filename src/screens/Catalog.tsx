@@ -128,12 +128,12 @@ export function Catalog() {
     <main className="screen no-tabs">
       <Header
         title="Каталог рецептов"
-        sub={mode === 'meals' ? 'TheMealDB · Блюда мира, перевод ИИ' : 'TheCocktailDB · Смузи и напитки, перевод ИИ'}
+        sub={mode === 'meals' ? 'Блюда разных стран — нейросеть переведёт рецепт' : 'Смузи и напитки — нейросеть переведёт рецепт'}
         backTo="#/recipes"
       />
 
       {/* Переключатель Еда / Напитки */}
-      <div className="seg" style={{ margin: '8px 0 14px' }}>
+      <div className="seg" style={{ marginBottom: 6 }}>
         <button
           type="button"
           className={mode === 'meals' ? 'on' : ''}
@@ -143,7 +143,7 @@ export function Catalog() {
             setError(null);
           }}
         >
-          🍲 Блюда (TheMealDB)
+          Блюда
         </button>
         <button
           type="button"
@@ -154,7 +154,7 @@ export function Catalog() {
             setError(null);
           }}
         >
-          🥤 Смузи и напитки (TheCocktailDB)
+          Смузи и напитки
         </button>
       </div>
 
@@ -166,7 +166,7 @@ export function Catalog() {
             <input
               className="input"
               type="search"
-              placeholder={mode === 'meals' ? 'Продукт по-русски или блюдо по-английски' : 'Поиск напитка (напр. shake, smoothie, tea)'}
+              placeholder={mode === 'meals' ? 'Курица, фарш… или pancakes' : 'Например: smoothie, shake, tea'}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -301,7 +301,7 @@ function ItemSheetModal({ id, mode, onClose }: { id: string | null; mode: Catalo
         text: details.rawText,
         images: [],
       });
-      const r = generatedToRecipe(g, mode === 'meals' ? 'TheMealDB' : 'TheCocktailDB');
+      const r = generatedToRecipe(g, 'каталог');
       if (mode === 'drinks' && !r.tags.includes('напиток')) {
         r.tags.push('напиток');
       }

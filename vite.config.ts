@@ -46,12 +46,13 @@ export default defineConfig(({ mode }) => {
   for (const [k, v] of Object.entries(loadEnv(mode, process.cwd(), ''))) process.env[k] ??= v;
 
   return {
+    define: { __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.3.0') },
     server: { host: true },
     plugins: [
       react(),
       devApi(),
       VitePWA({
-        registerType: 'autoUpdate',
+        registerType: 'prompt',
         includeAssets: ['favicon.ico', 'apple-touch-icon-180x180.png', 'logo.svg'],
         manifest: {
           id: '/',
@@ -72,8 +73,6 @@ export default defineConfig(({ mode }) => {
           ],
         },
         workbox: {
-          skipWaiting: true,
-          clientsClaim: true,
           globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2,wasm}'],
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           navigateFallback: '/index.html',

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { IconMicrophone } from '../components/icons';
+import { IconCheck, IconMicrophone } from '../components/icons';
 import { Empty, Spinner, Stepper, toast, useOnline } from '../components/ui';
 import { saveItems } from '../data/repo';
 import type { InventoryItem } from '../data/types';
@@ -137,162 +137,87 @@ export function VoiceScanner() {
 
   return (
     <div className="stack-lg">
-      {/* Крупная кнопка микрофона с пульсацией */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '24px 16px',
-          background: 'var(--surface)',
-          borderRadius: 24,
-          border: '1px solid var(--line)',
-          textAlign: 'center',
-          gap: 16,
-        }}
-      >
+      <div className="voice-hero">
         <button
           type="button"
+          className={`voice-mic${listening ? ' on' : ''}`}
           onClick={toggleListen}
-          style={{
-            width: 84,
-            height: 84,
-            borderRadius: 999,
-            border: 'none',
-            background: listening ? '#E53935' : 'var(--brand)',
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            boxShadow: listening
-              ? '0 0 0 10px rgba(229, 57, 53, 0.25), 0 8px 24px rgba(229, 57, 53, 0.4)'
-              : '0 8px 20px rgba(0, 0, 0, 0.15)',
-            transition: 'all 0.25s ease',
-            animation: listening ? 'pulse 1.5s infinite' : 'none',
-          }}
+          disabled={!supported}
           aria-label={listening ? 'Остановить запись' : 'Начать запись голоса'}
         >
-          <IconMicrophone width={38} height={38} />
+          <IconMicrophone />
         </button>
-
-        <div>
-          <b style={{ fontSize: '1.1rem', display: 'block' }}>
-            {listening ? 'Слушаю вас… Называйте продукты' : 'Нажмите микрофон и надиктуйте'}
-          </b>
-          <span className="small muted" style={{ display: 'block', marginTop: 4 }}>
-            Например: «Молоко, две пачки творога, килограмм яблок и сыр»
+        <div className="stack" style={{ gap: 4 }}>
+          <b>{!supported ? 'Диктуйте с клавиатуры' : listening ? 'Слушаю — называйте продукты' : 'Нажмите и надиктуйте продукты'}</b>
+          <span className="small muted">
+            {!supported
+              ? 'Коснитесь поля ниже и нажмите микрофон на клавиатуре iPhone'
+              : '«Молоко, две пачки творога, килограмм яблок и сыр»'}
           </span>
         </div>
-
-        {!supported && (
-          <div className="notice" style={{ maxWidth: 360, fontSize: 13 }}>
-            На вашем устройстве прямой голосовой ввод браузером ограничен. Нажмите на текстовое поле ниже и воспользуйтесь значком микрофона на клавиатуре iPhone.
-          </div>
-        )}
       </div>
 
-      {/* Поле живой расшифровки / ручного ввода */}
-      <div className="stack" style={{ gap: 8 }}>
+      <div className="stack">
         <textarea
           className="textarea"
           rows={3}
           value={transcript}
           onChange={(e) => setTranscript(e.target.value)}
-          placeholder="Здесь появится надиктованный текст (можно также вставить или написать руками)..."
-          style={{ fontSize: 15 }}
+          placeholder="Молоко, 10 яиц, полкило фарша…"
         />
-
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="row-gap">
           {transcript && (
-            <button
-              type="button"
-              className="btn quiet small"
-              onClick={() => {
-                setTranscript('');
-                setItems(null);
-              }}
-            >
+            <button type="button" className="btn quiet small" onClick={() => { setTranscript(''); setItems(null); setNote(null); }}>
               Очистить
             </button>
           )}
-          <button
-            type="button"
-            className="btn primary"
-            style={{ flex: 1 }}
-            disabled={busy || !transcript.trim()}
-            onClick={() => handleParse(transcript)}
-          >
-            {busy ? <><Spinner /> Распознаю…</> : 'Разобрать продукты'}
+          <button type="button" className="btn grow" disabled={busy || !transcript.trim()} onClick={() => handleParse(transcript)}>
+            {busy ? <><Spinner /> Разбираю…</> : 'Разобрать список'}
           </button>
         </div>
       </div>
 
-      {/* Результат разбора списка */}
       {note && <div className="notice">{note}</div>}
 
       {items && items.length > 0 && (
-        <div className="card flat stack" style={{ gap: 12 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <b>Распознано продуктов: {items.filter((i) => i.include).length} из {items.length}</b>
-            <span className="small muted">Отметьте нужные</span>
-          </div>
-
+        <section className="stack">
+          <div className="section-label">Выбрано {items.filter((i) => i.include).length} из {items.length}</div>
           <div className="list">
             {items.map((it, idx) => (
-              <div
-                key={idx}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  padding: '10px 0',
-                  borderBottom: '1px solid var(--line)',
-                  opacity: it.include ? 1 : 0.45,
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={it.include}
-                  onChange={(e) =>
-                    setItems(items.map((x, i) => (i === idx ? { ...x, include: e.target.checked } : x)))
-                  }
-                  style={{ width: 22, height: 22, accentColor: 'var(--brand)', cursor: 'pointer' }}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <b style={{ display: 'block', fontSize: 15 }}>{it.name}</b>
-                  <span className="small muted">
-                    {LOCATION_LABELS[it.location]} · {formatQty(it.qty, it.unit)}
-                  </span>
+              <div key={idx} className={`voice-row${it.include ? '' : ' off'}`}>
+                <button
+                  type="button"
+                  className={`round-check${it.include ? ' on' : ''}`}
+                  aria-pressed={it.include}
+                  aria-label={it.include ? `Не добавлять ${it.name}` : `Добавить ${it.name}`}
+                  onClick={() => setItems(items.map((x, i) => (i === idx ? { ...x, include: !x.include } : x)))}
+                >
+                  {it.include && <IconCheck />}
+                </button>
+                <span className="nm">
+                  <b>{it.name}</b>
+                  <small>{LOCATION_LABELS[it.location]}</small>
+                </span>
+                <div className="voice-qty">
+                  <Stepper
+                    label={`Количество: ${it.name}`}
+                    value={it.qty}
+                    step={it.unit === 'g' || it.unit === 'ml' ? 50 : 1}
+                    onChange={(val) => setItems(items.map((x, i) => (i === idx ? { ...x, qty: val } : x)))}
+                  />
+                  <small>{formatQty(it.qty, it.unit).replace(/^[\d.,½\s]+/, '')}</small>
                 </div>
-                <Stepper
-                  value={it.qty}
-                  step={it.unit === 'g' || it.unit === 'ml' ? 50 : 1}
-                  onChange={(val) =>
-                    setItems(items.map((x, i) => (i === idx ? { ...x, qty: val } : x)))
-                  }
-                />
               </div>
             ))}
           </div>
-
-          <button
-            type="button"
-            className="btn primary block"
-            disabled={items.filter((i) => i.include).length === 0}
-            onClick={handleSave}
-            style={{ marginTop: 8 }}
-          >
-            Добавить в холодильник ({items.filter((i) => i.include).length})
+          <button type="button" className="btn block" disabled={items.filter((i) => i.include).length === 0} onClick={handleSave}>
+            Добавить в холодильник: {items.filter((i) => i.include).length}
           </button>
-        </div>
+        </section>
       )}
 
       {items && items.length === 0 && !busy && (
-        <Empty title="Не удалось распознать продукты">
-          Попробуйте сказать иначе или введите названия через запятую.
-        </Empty>
+        <Empty title="Продукты не распознались">Скажите иначе или перечислите названия через запятую.</Empty>
       )}
     </div>
   );

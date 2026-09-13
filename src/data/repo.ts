@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { BASE_RECIPES } from '../shared/recipes';
 import { DEFAULT_STAPLES, getProduct, guessProductKey, type Category } from '../shared/products';
 import { estimateExpiry } from '../shared/freshness';
-import type { ItemUnit } from '../shared/units';
+import { convert, type ItemUnit } from '../shared/units';
 import type { Recipe } from '../shared/recipeTypes';
 import { db, DEFAULT_META, getMeta, newId } from './db';
 import type { CookLogEntry, DeviceMeta, HouseholdSettings, InventoryItem, PlannedMeal, RecordKind, ScanJob, ShoppingItem, SyncRecord } from './types';
@@ -171,14 +171,16 @@ export async function addShoppingItems(
     const unit = item.unit ?? (prod?.unit as ItemUnit) ?? 'pcs';
     const qty = item.qty ?? 1;
 
+    // Складываем только то, что можно перевести в одни единицы: 2 шт яиц + 10 шт, 500 г + 1 кг
+    const sameQty = (e: ShoppingItem) => convert(qty, unit, e.unit, key);
     const duplicate = existing.find(
-      (e) => !e.checked && ((key && e.productKey === key) || e.name.toLowerCase() === item.name.toLowerCase()),
+      (e) => !e.checked && ((key && e.productKey === key) || e.name.toLowerCase() === item.name.toLowerCase()) && sameQty(e) !== null,
     );
 
     if (duplicate) {
       await putRecord<ShoppingItem>('shopping', duplicate.id, {
         ...duplicate,
-        qty: duplicate.qty + qty,
+        qty: Math.round((duplicate.qty + (sameQty(duplicate) ?? 0)) * 100) / 100,
         recipeTitle: item.recipeTitle
           ? duplicate.recipeTitle
             ? `${duplicate.recipeTitle}, ${item.recipeTitle}`

@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { back } from '../router';
 import { freshness, stickerText } from '../shared/freshness';
-import { IconBack } from './icons';
+import { IconBack, IconClose } from './icons';
 
 export function Header({ title, sub, backTo, right }: { title: string; sub?: ReactNode; backTo?: string | true; right?: ReactNode }) {
   return (
@@ -73,7 +73,7 @@ export function Sheet({
             onClick={onClose}
             aria-label="Закрыть"
           >
-            ✕
+            <IconClose />
           </button>
         </div>
         <div className="sheet-body">

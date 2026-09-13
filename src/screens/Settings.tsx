@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { IconBack } from '../components/icons';
 import { Header, Sheet, Spinner, Stepper, toast, useOnline } from '../components/ui';
 import { db, setMeta } from '../data/db';
 import { saveSettings, useCookLog, useMeta, useSettings } from '../data/repo';
@@ -6,22 +7,59 @@ import {
   createHousehold, joinHousehold, sendLoginCode, signOut, syncNow, useSyncStatus, verifyLoginCode,
 } from '../data/sync';
 import type { SyncRecord } from '../data/types';
+import { AiRequestError, recognize } from '../lib/ai';
 import { usePwaUpdate } from '../lib/pwaUpdate';
 import { supabase } from '../lib/supabase';
+import { todayISO } from '../shared/dates';
 import { PRODUCTS } from '../shared/products';
+import { plural } from './Fridge';
 
 export function Settings() {
   const settings = useSettings();
   const meta = useMeta();
   const cooked = useCookLog();
-  const { hasUpdate, applyUpdate, checkForUpdate } = usePwaUpdate();
+  const online = useOnline();
+  const { hasUpdate, isUpdating, applyUpdate, checkForUpdate } = usePwaUpdate();
   const [staplesOpen, setStaplesOpen] = useState(false);
-  const [code, setCode] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+  const [checkingAi, setCheckingAi] = useState(false);
+  const [aiStatus, setAiStatus] = useState<{ ok: boolean; text: string } | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
   const standalone = matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
+
+  async function saveCode() {
+    await setMeta({ accessCode: code.trim() });
+    setCode('');
+    setAiStatus(null);
+    toast('Код сохранён');
+  }
+
+  async function checkAi() {
+    setCheckingAi(true);
+    setAiStatus(null);
+    try {
+      await recognize({ task: 'text', today: todayISO(), text: 'яйца' });
+      setAiStatus({ ok: true, text: 'Нейросеть отвечает — скан упаковок и чеков работает' });
+    } catch (e) {
+      const text = e instanceof AiRequestError && e.status === 401
+        ? 'Код не подошёл. Проверьте его — он совпадает с кодом на сервере.'
+        : (e as Error).message;
+      setAiStatus({ ok: false, text });
+    } finally {
+      setCheckingAi(false);
+    }
+  }
+
+  async function checkUpdate() {
+    setCheckingUpdate(true);
+    const found = await checkForUpdate();
+    setCheckingUpdate(false);
+    if (!found) toast('Установлена последняя версия');
+  }
 
   return (
     <main className="screen">
-      <Header title="Настройки" />
+      <Header title="Настройки" backTo="#/fridge" />
       <div className="stack-lg">
         {!standalone && (
           <div className="notice info">
@@ -33,8 +71,8 @@ export function Settings() {
         <section className="stack">
           <div className="section-label">Семья</div>
           <div className="card flat row-gap">
-            <div className="grow"><b>Порций по умолчанию</b></div>
-            <div style={{ width: 150 }}><Stepper label="Порций" value={settings.servings} min={1} onChange={(v) => saveSettings({ servings: Math.max(1, Math.round(v)) })} /></div>
+            <div className="grow"><b>Сколько человек едят</b><div className="small muted">Под это число пересчитываются порции</div></div>
+            <div style={{ width: 140 }}><Stepper label="Человек" value={settings.servings} min={1} onChange={(v) => saveSettings({ servings: Math.max(1, Math.round(v)) })} /></div>
           </div>
           <div className="card flat stack">
             <b>Время на готовку в будни</b>
@@ -44,9 +82,12 @@ export function Settings() {
               ))}
             </div>
           </div>
-          <button className="card flat row-gap" style={{ border: '1px solid var(--line)', textAlign: 'left' }} onClick={() => setStaplesOpen(true)}>
-            <div className="grow"><b>Базовые запасы</b><div className="small muted">{settings.staples.length} продуктов всегда есть дома</div></div>
-            <span className="muted">›</span>
+          <button className="card flat row-gap settings-link" onClick={() => setStaplesOpen(true)}>
+            <div className="grow">
+              <b>Всегда есть дома</b>
+              <div className="small muted">{settings.staples.length} {plural(settings.staples.length, 'продукт', 'продукта', 'продуктов')}: соль, масло, мука… — рецепты считают их имеющимися</div>
+            </div>
+            <IconBack className="chevron" />
           </button>
         </section>
 
@@ -55,68 +96,52 @@ export function Settings() {
         <section className="stack">
           <div className="section-label">Нейросеть</div>
           <div className="card flat stack">
-            <b>Код доступа</b>
-            <p className="small muted">Защищает бесплатный лимит нейросети от чужих. Совпадает с APP_ACCESS_CODE на сервере.</p>
-            <div className="row-gap">
-              <input className="input" type="password" autoComplete="off" placeholder={meta.accessCode ? '••••••' : 'Код не задан'}
-                value={code ?? ''} onChange={(e) => setCode(e.target.value)} />
-              <button className="btn small" style={{ minHeight: 46 }} disabled={code === null} onClick={async () => {
-                await setMeta({ accessCode: (code ?? '').trim() });
-                setCode(null);
-                toast('Код сохранён');
-              }}>Сохранить</button>
+            <div>
+              <b>Код доступа</b>
+              <div className="small muted">
+                {meta.accessCode ? 'Сохранён на этом телефоне. Введите новый, чтобы заменить.' : 'Нужен, чтобы нейросеть читала упаковки, чеки и придумывала рецепты.'}
+              </div>
             </div>
+            <form className="row-gap" onSubmit={(e) => { e.preventDefault(); if (code.trim()) void saveCode(); }}>
+              <input className="input" type="password" autoComplete="off" placeholder={meta.accessCode ? '••••••' : 'Код доступа'}
+                value={code} onChange={(e) => setCode(e.target.value)} />
+              <button className="btn small" type="submit" style={{ minHeight: 46 }} disabled={!code.trim()}>Сохранить</button>
+            </form>
+            <button className="btn ghost small" onClick={checkAi} disabled={!online || checkingAi}>
+              {checkingAi ? <Spinner /> : null} Проверить нейросеть
+            </button>
+            {aiStatus && <div className={`notice ${aiStatus.ok ? 'info' : 'error'}`}>{aiStatus.text}</div>}
           </div>
         </section>
 
         <section className="stack">
           <div className="section-label">Приложение</div>
-          <div className="card flat stack">
-            <div className="row-gap">
-              <div className="grow">
-                <b>Версия 0.2.0</b>
-                <div className="small muted">
-                  {standalone ? 'Установлено на экран «Домой»' : 'Запущено в браузере'}
-                </div>
+          <div className="card flat row-gap">
+            <div className="grow">
+              <b>Версия {__APP_VERSION__}</b>
+              <div className="small muted">
+                {hasUpdate ? 'Новая версия скачана' : standalone ? 'Установлено на экран «Домой»' : 'Открыто в браузере'}
               </div>
-              {hasUpdate ? (
-                <button
-                  className="btn small primary"
-                  onClick={() => void applyUpdate()}
-                >
-                  Обновить сейчас
-                </button>
-              ) : (
-                <button
-                  className="btn small ghost"
-                  onClick={async () => {
-                    toast('Проверяю обновления…');
-                    const found = await checkForUpdate();
-                    if (!found) {
-                      toast('У вас установлена последняя версия');
-                    }
-                  }}
-                >
-                  Проверить
-                </button>
-              )}
             </div>
-            {hasUpdate && (
-              <div className="notice info" style={{ margin: 0 }}>
-                ✨ Новая версия уже скачана! Нажмите «Обновить сейчас» для перезагрузки.
-              </div>
+            {hasUpdate ? (
+              <button className="btn small" onClick={() => void applyUpdate()} disabled={isUpdating}>
+                {isUpdating ? <Spinner /> : 'Обновить'}
+              </button>
+            ) : (
+              <button className="btn small ghost" onClick={checkUpdate} disabled={!online || checkingUpdate}>
+                {checkingUpdate ? <Spinner /> : 'Проверить'}
+              </button>
             )}
-            <p className="small muted">
-              Приложение проверяет наличие обновлений в фоне при каждом открытии и показывает всплывающее окно, когда готова новая версия.
-            </p>
           </div>
         </section>
 
         <BackupSection />
 
-        <p className="small muted" style={{ textAlign: 'center' }}>
-          Приготовлено блюд: {cooked?.length ?? 0} · версия 0.1
-        </p>
+        {(cooked?.length ?? 0) > 0 && (
+          <p className="small muted" style={{ textAlign: 'center' }}>
+            Приготовлено по рецептам: {cooked!.length} {plural(cooked!.length, 'блюдо', 'блюда', 'блюд')}
+          </p>
+        )}
       </div>
 
       <StaplesSheet open={staplesOpen} onClose={() => setStaplesOpen(false)} selected={settings.staples} />
@@ -168,8 +193,8 @@ function SyncSection() {
       <section className="stack">
         <div className="section-label">Общий холодильник</div>
         <div className="card flat stack">
-          <b>Синхронизация не настроена</b>
-          <p className="small muted">Сейчас данные хранятся только на этом телефоне. Чтобы видеть один холодильник с двух телефонов, подключите бесплатный Supabase — инструкция в README проекта.</p>
+          <b>Пока только на этом телефоне</b>
+          <p className="small muted">Продукты, рецепты и покупки сейчас хранятся только на этом телефоне. Перенести их на другой телефон можно через резервную копию ниже.</p>
         </div>
       </section>
     );

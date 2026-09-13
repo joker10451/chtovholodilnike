@@ -64,7 +64,7 @@ export function App() {
     case 'settings': screen = <Settings />; break;
     default: screen = <Fridge />;
   }
-  const showTabs = !['cook', 'recipe', 'catalog', 'scan'].includes(route.name);
+  const showTabs = !['cook', 'recipe', 'catalog', 'scan', 'review'].includes(route.name);
   const tab = TAB_OF[route.name] ?? 'fridge';
 
   return (
@@ -89,28 +89,11 @@ export function App() {
             <IconCal />
             Рацион
           </a>
-          <a className={`tab${tab === 'shopping' ? ' on' : ''}`} href={href('shopping')} style={{ position: 'relative' }}>
+          <a className={`tab${tab === 'shopping' ? ' on' : ''}`} href={href('shopping')}>
             <IconCart />
             Покупки
             {unboughtCount > 0 && (
-              <span
-                style={{
-                  position: 'absolute',
-                  top: 2,
-                  right: 'calc(50% - 16px)',
-                  background: 'var(--brand)',
-                  color: '#fff',
-                  fontSize: 10,
-                  fontWeight: 700,
-                  height: 16,
-                  minWidth: 16,
-                  padding: '0 4px',
-                  borderRadius: 999,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
+              <span className="tab-badge num">
                 {unboughtCount}
               </span>
             )}

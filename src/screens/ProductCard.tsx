@@ -6,13 +6,20 @@ import { addDays, daysBetween, shortDate } from '../shared/dates';
 import { CATEGORY_LABELS, LOCATION_LABELS, LOCATIONS } from '../shared/products';
 import { formatQty, UNIT_LABELS, type BaseUnit } from '../shared/units';
 import { useObjectUrls } from '../hooks';
+import { href } from '../router';
 
 const SOURCE_LABEL: Record<ProductInfo['source'], string> = {
   memory: 'Из вашей базы',
-  openfoodfacts: 'Open Food Facts',
+  openfoodfacts: 'Найден в базе',
   photo: 'Прочитано с упаковки',
   manual: 'Нет в базах',
 };
+
+export interface CardError {
+  message: string;
+  /** Проблема решается в настройках (код доступа) */
+  settings?: boolean;
+}
 
 export interface CardResult {
   product: ProductInfo;
@@ -28,7 +35,7 @@ export function ProductCard({
   photo: Blob | null;
   today: string;
   reading: boolean;
-  readError: string | null;
+  readError: CardError | null;
   /** Почему товар не нашёлся в базах */
   note: string | null;
   online: boolean;
@@ -86,7 +93,12 @@ export function ProductCard({
       {reading && (
         <div className="notice info row-gap"><Spinner /> <span>{product.barcode && product.source === 'manual' ? 'В базах товара нет — нейросеть читает упаковку по снимку…' : 'Нейросеть читает упаковку: название, вес, КБЖУ и срок…'}</span></div>
       )}
-      {readError && <div className="notice error">{readError}</div>}
+      {readError && (
+        <div className="notice error">
+          <span>{readError.message}</span>
+          {readError.settings && <a className="notice-link" href={href('settings')}>Открыть настройки</a>}
+        </div>
+      )}
 
       {!reading && !complete && (
         <button className="pcard-cta" onClick={() => onPhoto('package')} disabled={!online}>
@@ -123,6 +135,9 @@ export function ProductCard({
         </div>
         {product.manufacturedAt && product.shelfLifeDays && !product.expiresAt && (
           <span className="small muted">Изготовлено {shortDate(product.manufacturedAt)}, срок {product.shelfLifeDays} дн.</span>
+        )}
+        {product.source === 'photo' && !reading && !product.expiresAt && !product.manufacturedAt && !product.shelfLifeDays && !date && (
+          <span className="small warn">Срок на снимке не нашёлся — снимите дату или выберите вручную</span>
         )}
         {!product.manufacturedAt && product.shelfLifeDays && !product.expiresAt && !date && (
           <span className="small muted">Срок годности {product.shelfLifeDays} дн. от даты изготовления — снимите дату, и приложение посчитает, до какого числа.</span>

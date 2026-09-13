@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { IconCheck, IconPlus, IconShare, IconTrash } from '../components/icons';
+import { IconCheck, IconClose, IconPlus, IconShare } from '../components/icons';
 import { CATEGORY_DOT, Empty, Header, toast, useToday } from '../components/ui';
 import {
   addShoppingItems,
@@ -10,317 +10,161 @@ import {
   useShoppingList,
 } from '../data/repo';
 import type { ShoppingItem } from '../data/types';
-import { href } from '../router';
 import { parseProductsText } from '../lib/parseText';
+import { href } from '../router';
 import type { Category } from '../shared/products';
 import { formatQty } from '../shared/units';
 import { plural } from './Fridge';
 
-const DEPARTMENT_ORDER: { title: string; categories: Category[] }[] = [
+const DEPARTMENTS: { title: string; categories: Category[] }[] = [
   { title: 'Овощи и фрукты', categories: ['vegetables', 'greens', 'fruits'] },
   { title: 'Молочное и яйца', categories: ['dairy', 'eggs'] },
   { title: 'Мясо и рыба', categories: ['meat', 'poultry', 'fish'] },
-  { title: 'Бакалея и хлеб', categories: ['grains', 'bakery', 'canned'] },
-  { title: 'Другое', categories: ['drinks', 'sauces', 'sweets', 'spices', 'nuts', 'frozen', 'ready', 'other'] },
+  { title: 'Хлеб и бакалея', categories: ['grains', 'bakery', 'canned', 'spices', 'nuts'] },
+  { title: 'Заморозка', categories: ['frozen'] },
+  { title: 'Другое', categories: ['drinks', 'sauces', 'sweets', 'ready', 'other'] },
 ];
 
 export function Shopping() {
   const items = useShoppingList();
   const today = useToday();
   const [input, setInput] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
-  const total = items?.length ?? 0;
-  const checked = items?.filter((i) => i.checked) ?? [];
-  const checkedCount = checked.length;
+  const toBuy = items?.filter((i) => !i.checked) ?? [];
+  const inCart = items?.filter((i) => i.checked) ?? [];
 
-  const grouped = useMemo(() => {
+  const groups = useMemo(() => {
     if (!items) return [];
-    const res: { title: string; items: ShoppingItem[] }[] = [];
-    const assigned = new Set<string>();
-
-    for (const dept of DEPARTMENT_ORDER) {
-      const deptItems = items.filter((i) => dept.categories.includes(i.category));
-      if (deptItems.length > 0) {
-        res.push({ title: dept.title, items: deptItems });
-        deptItems.forEach((i) => assigned.add(i.id));
-      }
-    }
-
-    const rest = items.filter((i) => !assigned.has(i.id));
-    if (rest.length > 0) {
-      res.push({ title: 'Разное', items: rest });
-    }
-    return res;
+    return DEPARTMENTS
+      .map((d) => ({
+        title: d.title,
+        items: items
+          .filter((i) => d.categories.includes(i.category))
+          .sort((a, b) => Number(a.checked) - Number(b.checked) || b.createdAt - a.createdAt),
+      }))
+      .filter((g) => g.items.length > 0);
   }, [items]);
 
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
     const text = input.trim();
     if (!text) return;
-
-    setSubmitting(true);
-    try {
-      // Пробуем распознать фразу офлайн
-      const parsed = parseProductsText(text);
-      if (parsed.length > 0) {
-        await addShoppingItems(
-          parsed.map((p) => ({
-            name: p.name,
-            productKey: p.productKey,
-            qty: p.qty,
-            unit: p.unit,
-          })),
-        );
-      } else {
-        await addShoppingItems([{ name: text }]);
-      }
-      setInput('');
-      toast('Добавлено в список');
-    } finally {
-      setSubmitting(false);
-    }
+    const parsed = parseProductsText(text);
+    await addShoppingItems(parsed.length > 0 ? parsed.map((p) => ({ name: p.name, productKey: p.productKey, qty: p.qty, unit: p.unit })) : [{ name: text }]);
+    setInput('');
   }
 
   async function handleTransfer() {
-    if (checkedCount === 0) return;
     const moved = await transferCheckedToFridge(today);
-    toast(`${moved} ${plural(moved, 'продукт перенесён', 'продукта перенесено', 'продуктов перенесено')} в холодильник`);
+    toast(`В холодильник: ${moved} ${plural(moved, 'продукт', 'продукта', 'продуктов')}. Сроки посчитаны по типу продукта`);
   }
 
   async function handleShare() {
-    if (!items || items.length === 0) return;
-
-    const unbought = items.filter((i) => !i.checked);
-    const bought = items.filter((i) => i.checked);
-
-    const lines: string[] = ['🛒 Что купить:'];
-    if (unbought.length > 0) {
-      unbought.forEach((i) => {
-        const qtyStr = i.qty ? ` — ${formatQty(i.qty, i.unit)}` : '';
-        lines.push(`◻️ ${i.name}${qtyStr}`);
-      });
-    } else {
-      lines.push('Все продукты уже куплены! 🎉');
-    }
-
-    if (bought.length > 0) {
-      lines.push('');
-      lines.push('✅ Уже куплено:');
-      bought.forEach((i) => {
-        const qtyStr = i.qty ? ` — ${formatQty(i.qty, i.unit)}` : '';
-        lines.push(`☑️ ${i.name}${qtyStr}`);
-      });
-    }
-
-    const text = lines.join('\n');
-
+    if (toBuy.length === 0) return;
+    const text = ['Купить:', ...toBuy.map((i) => `— ${i.name}${i.qty ? `, ${formatQty(i.qty, i.unit)}` : ''}`)].join('\n');
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: 'Что купить в магазине',
-          text,
-        });
+        await navigator.share({ text });
         return;
-      } catch (e: unknown) {
+      } catch (e) {
         if ((e as Error)?.name === 'AbortError') return;
       }
     }
-
     try {
       await navigator.clipboard.writeText(text);
-      toast('Чек-лист скопирован в буфер обмена');
+      toast('Список скопирован — вставьте его в сообщение');
     } catch {
-      toast('Не удалось скопировать список');
+      toast('Не получилось скопировать список');
     }
-  }
-
-  async function handleClearDone() {
-    if (checkedCount === 0) return;
-    await clearCheckedShoppingItems();
-    toast('Купленные позиции удалены');
   }
 
   return (
     <main className="screen">
       <Header
         title="Покупки"
-        sub={
-          items
-            ? `${total} ${plural(total, 'позиция', 'позиции', 'позиций')}${checkedCount > 0 ? ` · ${checkedCount} куплено` : ''}`
-            : ' '
-        }
-        right={
-          <div style={{ display: 'flex', gap: 6 }}>
-            {total > 0 && (
-              <button className="icon-btn" onClick={handleShare} aria-label="Поделиться списком">
-                <IconShare width={18} height={18} />
-              </button>
-            )}
-            {checkedCount > 0 && (
-              <button className="icon-btn" onClick={handleClearDone} aria-label="Очистить купленное">
-                <IconTrash width={18} height={18} />
-              </button>
-            )}
-          </div>
-        }
+        sub={items ? (items.length === 0 ? 'Список пуст' : `Купить ${toBuy.length}${inCart.length ? ` · в корзине ${inCart.length}` : ''}`) : ' '}
+        right={toBuy.length > 0 && (
+          <button className="icon-btn" onClick={handleShare} aria-label="Отправить список">
+            <IconShare />
+          </button>
+        )}
       />
 
-      <div className="stack">
-        <form onSubmit={handleAdd} style={{ display: 'flex', gap: 8 }}>
+      <div className="stack-lg">
+        <form className="add-row" onSubmit={handleAdd}>
           <input
             className="input"
-            type="text"
-            placeholder="Что купить (например, «2 л молока»)"
+            placeholder="Что купить: 2 л молока, хлеб"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            disabled={submitting}
-            style={{ flex: 1 }}
+            enterKeyHint="done"
           />
-          <button className="btn primary" type="submit" disabled={!input.trim() || submitting} style={{ minWidth: 44, padding: '0 14px' }}>
+          <button className="btn" type="submit" disabled={!input.trim()} aria-label="Добавить в список">
             <IconPlus />
           </button>
         </form>
 
-        {total > 0 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, margin: '2px 0' }}>
-            <button
-              type="button"
-              className="btn small ghost"
-              onClick={handleShare}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                fontWeight: 600,
-                fontSize: '0.85rem',
-              }}
-            >
-              <IconShare width={16} height={16} /> Отправить в Telegram / WhatsApp
-            </button>
-            {checkedCount > 0 && (
-              <button
-                type="button"
-                className="btn small quiet"
-                onClick={handleClearDone}
-                style={{ fontSize: '0.82rem' }}
-              >
-                Очистить купленное
-              </button>
-            )}
-          </div>
-        )}
-
-        {checkedCount > 0 && (
-          <div
-            className="card flat"
-            style={{
-              padding: '12px 16px',
-              background: 'var(--brand-soft)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-              borderRadius: 16,
-            }}
-          >
-            <div>
-              <b style={{ color: 'var(--brand)' }}>{checkedCount} {plural(checkedCount, 'товар куплен', 'товара куплено', 'товаров куплено')}</b>
-              <div className="small" style={{ color: 'var(--ink-2)', marginTop: 2 }}>
-                Перенести в холодильник со сроками
-              </div>
+        {inCart.length > 0 && (
+          <div className="cart-banner">
+            <div className="grow">
+              <b>В корзине {inCart.length} {plural(inCart.length, 'товар', 'товара', 'товаров')}</b>
+              <span>Дома перенесите в холодильник — срок посчитается сам</span>
             </div>
-            <button className="btn primary sm" onClick={handleTransfer} type="button">
-              В холодильник →
-            </button>
+            <div className="cart-banner-actions">
+              <button className="btn small" onClick={handleTransfer}>В холодильник</button>
+              <button className="btn small quiet" onClick={async () => { await clearCheckedShoppingItems(); toast('Корзина очищена'); }}>Убрать</button>
+            </div>
           </div>
         )}
 
-        {total === 0 && (
+        {items && items.length === 0 && (
           <Empty
             title="Список покупок пуст"
             action={
               <div className="stack" style={{ width: '100%', maxWidth: 320 }}>
-                <a className="btn block" href={href('recipes')}>Подобрать рецепты</a>
+                <a className="btn block" href={href('plan')}>Собрать из рациона</a>
+                <a className="btn ghost block" href={href('recipes')}>Подобрать рецепт</a>
               </div>
             }
           >
-            Добавляйте продукты перед походом в магазин или отправляйте недостающие ингредиенты прямо со страницы любого рецепта.
+            Добавьте продукты строкой выше, соберите покупки из рациона на неделю или отправьте недостающее со страницы рецепта.
           </Empty>
         )}
 
-        {grouped.map((group) => (
-          <div key={group.title} className="stack" style={{ gap: 6 }}>
-            <div className="section-label" style={{ marginTop: 8 }}>
-              {group.title} <span className="small muted">({group.items.length})</span>
-            </div>
+        {groups.map((group) => (
+          <section key={group.title} className="stack" style={{ gap: 6 }}>
+            <div className="section-label">{group.title} · {group.items.length}</div>
             <div className="list">
-              {group.items.map((item) => (
-                <div
-                  key={item.id}
-                  className={`item-row${item.checked ? ' checked' : ''}`}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '10px 14px',
-                    opacity: item.checked ? 0.6 : 1,
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => toggleShoppingItem(item.id, !item.checked)}
-                    aria-label={item.checked ? 'Отменить отметку' : 'Отметить купленным'}
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 6,
-                      border: item.checked ? 'none' : '2px solid var(--line)',
-                      background: item.checked ? 'var(--fresh)' : 'transparent',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#fff',
-                      cursor: 'pointer',
-                      flexShrink: 0,
-                      padding: 0,
-                    }}
-                  >
-                    {item.checked && <IconCheck width={16} height={16} />}
-                  </button>
-
-                  <span className="dot" style={{ margin: 0 }}>
-                    <i style={{ background: CATEGORY_DOT[item.category] }} />
-                  </span>
-
-                  <span className="nm" style={{ flex: 1, textDecoration: item.checked ? 'line-through' : 'none' }}>
-                    <b>{item.name}</b>
-                    {item.recipeTitle && (
-                      <small className="muted" style={{ display: 'block', fontSize: '0.8rem' }}>
-                        для: {item.recipeTitle}
-                      </small>
-                    )}
-                  </span>
-
-                  <span className="q num" style={{ flexShrink: 0, color: 'var(--ink-2)', fontSize: '0.9rem' }}>
-                    {formatQty(item.qty, item.unit)}
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => deleteShoppingItem(item.id)}
-                    aria-label="Удалить"
-                    className="icon-btn"
-                    style={{ width: 28, height: 28, color: 'var(--ink-3)', padding: 0 }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+              {group.items.map((item) => <ShoppingRow key={item.id} item={item} />)}
             </div>
-          </div>
+          </section>
         ))}
       </div>
     </main>
+  );
+}
+
+function ShoppingRow({ item }: { item: ShoppingItem }) {
+  return (
+    <div className={`shop-row${item.checked ? ' done' : ''}`}>
+      <button
+        type="button"
+        className={`round-check${item.checked ? ' on' : ''}`}
+        onClick={() => toggleShoppingItem(item.id, !item.checked)}
+        aria-label={item.checked ? `Вернуть ${item.name} в список` : `Отметить ${item.name} купленным`}
+        aria-pressed={item.checked}
+      >
+        {item.checked && <IconCheck />}
+      </button>
+      <span className="dot"><i style={{ background: CATEGORY_DOT[item.category] }} /></span>
+      <span className="nm">
+        <b>{item.name}</b>
+        {item.recipeTitle && <small>для: {item.recipeTitle}</small>}
+      </span>
+      <span className="qty num">{formatQty(item.qty, item.unit)}</span>
+      <button type="button" className="row-remove" onClick={() => deleteShoppingItem(item.id)} aria-label={`Удалить ${item.name}`}>
+        <IconClose />
+      </button>
+    </div>
   );
 }

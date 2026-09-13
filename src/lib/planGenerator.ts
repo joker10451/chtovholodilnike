@@ -1,12 +1,20 @@
 import { addShoppingItems } from '../data/repo';
-import type { InventoryItem, PlannedMeal } from '../data/types';
-import { getWeekDays } from '../shared/dates';
-import { expiringItemIds, type MatchContext } from './matching';
+import type { InventoryItem, MealSlot, PlannedMeal } from '../data/types';
+import { getWeekDays, todayISO } from '../shared/dates';
 import { getProduct } from '../shared/products';
 import type { Recipe } from '../shared/recipeTypes';
 import { convert, toBase, type ItemUnit } from '../shared/units';
-import { todayISO } from '../shared/dates';
+import { matchRecipe, type MatchContext } from './matching';
 
+const isDrink = (r: Recipe) => r.tags.includes('напиток');
+const isMain = (r: Recipe) => !isDrink(r) && !r.tags.includes('гарнир') && (r.tags.includes('обед') || r.tags.includes('ужин'));
+
+/**
+ * Рацион на неделю: завтраки — из завтраков, обеды и ужины — из основных блюд.
+ * Выше ставятся блюда, которые спасают истекающие продукты и для которых больше есть дома.
+ * Блюдо не повторяется в течение недели, пока хватает рецептов.
+ * Если ужин приготовлен впрок (порций больше, чем едоков), на следующий обед — его остатки.
+ */
 export function generateWeekPlan({
   mondayIso,
   ctx,
@@ -21,119 +29,59 @@ export function generateWeekPlan({
   servings?: number;
 }): PlannedMeal[] {
   const days = getWeekDays(mondayIso);
-  const lockedMap = new Map<string, PlannedMeal>();
-  for (const m of existingMeals) {
-    if (m.locked) {
-      lockedMap.set(m.id, m);
-    }
-  }
+  const locked = new Map(existingMeals.filter((m) => m.locked).map((m) => [m.id, m]));
+  const byId = new Map(recipes.map((r) => [r.id, r]));
 
-  // Находим спасаемые продукты
-  const rescueIds = new Set(expiringItemIds(ctx));
+  // Рейтинг как в подборке рецептов: совпадение с холодильником + спасение истекающего
+  const score = new Map(recipes.map((r) => [r.id, matchRecipe(ctx, r).score]));
+  const ranked = (pool: Recipe[]) => [...pool].sort((a, b) => (score.get(b.id) ?? 0) - (score.get(a.id) ?? 0));
 
-  // Разделяем рецепты
-  const breakfastPool = recipes.filter(
-    (r) => r.tags.includes('завтрак') || r.time <= 20,
-  );
-  const dinnerPool = recipes.filter(
-    (r) => r.tags.includes('ужин') || r.tags.includes('обед') || r.time >= 20,
-  );
-  const allPool = [...recipes];
+  const breakfasts = ranked(recipes.filter((r) => !isDrink(r) && r.tags.includes('завтрак')));
+  const mains = ranked(recipes.filter(isMain));
+  const lunches = [...mains.filter((r) => r.tags.includes('обед')), ...mains.filter((r) => !r.tags.includes('обед'))];
+  const dinners = [...mains.filter((r) => r.tags.includes('ужин')), ...mains.filter((r) => !r.tags.includes('ужин'))];
 
-  // Сортируем: сначала те, что спасают продукты из холодильника
-  const sortByRescue = (a: Recipe, b: Recipe) => {
-    const aRescues = a.ingredients.some((i) =>
-      ctx.items.some((it) => rescueIds.has(it.id) && it.productKey === i.key),
-    );
-    const bRescues = b.ingredients.some((i) =>
-      ctx.items.some((it) => rescueIds.has(it.id) && it.productKey === i.key),
-    );
-    if (aRescues && !bRescues) return -1;
-    if (!aRescues && bRescues) return 1;
-    return 0;
+  const used = new Set<string>([...locked.values()].map((m) => m.recipeId));
+  const pick = (pool: Recipe[], dayUsed: Set<string>): Recipe | undefined => {
+    const fresh = pool.find((r) => !used.has(r.id) && !dayUsed.has(r.id)) ?? pool.find((r) => !dayUsed.has(r.id)) ?? pool[0] ?? recipes[0];
+    if (fresh) used.add(fresh.id);
+    return fresh;
   };
 
-  const sortedBreakfast = [...breakfastPool].sort(sortByRescue);
-  const sortedDinner = [...dinnerPool].sort(sortByRescue);
+  const now = Date.now();
+  const meal = (date: string, slot: MealSlot, r: Recipe, extra: Partial<PlannedMeal> = {}): PlannedMeal => ({
+    id: `${date}_${slot}`, date, slot, recipeId: r.id, title: r.title, servings, createdAt: now, ...extra,
+  });
 
   const result: PlannedMeal[] = [];
-  let bIdx = 0;
-  let dIdx = 0;
-  let prevDinnerRecipe: Recipe | null = null;
-  const now = Date.now();
+  let prevDinner: Recipe | null = null;
 
-  for (let d = 0; d < days.length; d++) {
-    const date = days[d];
+  for (const date of days) {
+    const dayUsed = new Set<string>();
+    const take = (slot: MealSlot, pool: Recipe[], leftover?: Recipe | null) => {
+      const id = `${date}_${slot}`;
+      const kept = locked.get(id);
+      if (kept) {
+        dayUsed.add(kept.recipeId);
+        result.push(kept);
+        return byId.get(kept.recipeId) ?? null;
+      }
+      if (leftover) {
+        result.push(meal(date, slot, leftover, { isLeftover: true, leftoverFromDate: result.find((m) => m.slot === 'dinner' && m.recipeId === leftover.id)?.date }));
+        dayUsed.add(leftover.id);
+        return leftover;
+      }
+      const r = pick(pool, dayUsed);
+      if (!r) return null;
+      dayUsed.add(r.id);
+      result.push(meal(date, slot, r));
+      return r;
+    };
 
-    // 1. ЗАВТРАК
-    const bId = `${date}_breakfast`;
-    if (lockedMap.has(bId)) {
-      result.push(lockedMap.get(bId)!);
-    } else {
-      const bRecipe = sortedBreakfast[bIdx % sortedBreakfast.length] ?? allPool[0];
-      bIdx++;
-      result.push({
-        id: bId,
-        date,
-        slot: 'breakfast',
-        recipeId: bRecipe.id,
-        title: bRecipe.title,
-        servings,
-        createdAt: now,
-      });
-    }
-
-    // 2. ОБЕД (во вторник и четверг пробуем остатки вчерашнего ужина, иначе лёгкое блюдо)
-    const lId = `${date}_lunch`;
-    if (lockedMap.has(lId)) {
-      result.push(lockedMap.get(lId)!);
-    } else if ((d === 1 || d === 3) && prevDinnerRecipe) {
-      // Вторник и Четверг — обед доедает ужин предыдущего дня
-      result.push({
-        id: lId,
-        date,
-        slot: 'lunch',
-        recipeId: prevDinnerRecipe.id,
-        title: prevDinnerRecipe.title,
-        servings,
-        isLeftover: true,
-        leftoverFromDate: days[d - 1],
-        createdAt: now,
-      });
-    } else {
-      // Свежий быстрый обед
-      const lRecipe = sortedDinner[(dIdx + 5) % sortedDinner.length] ?? allPool[0];
-      result.push({
-        id: lId,
-        date,
-        slot: 'lunch',
-        recipeId: lRecipe.id,
-        title: lRecipe.title,
-        servings,
-        createdAt: now,
-      });
-    }
-
-    // 3. УЖИН
-    const dId = `${date}_dinner`;
-    if (lockedMap.has(dId)) {
-      const lockedMeal = lockedMap.get(dId)!;
-      result.push(lockedMeal);
-      prevDinnerRecipe = recipes.find((r) => r.id === lockedMeal.recipeId) ?? null;
-    } else {
-      const dRecipe = sortedDinner[dIdx % sortedDinner.length] ?? allPool[0];
-      dIdx++;
-      prevDinnerRecipe = dRecipe;
-      result.push({
-        id: dId,
-        date,
-        slot: 'dinner',
-        recipeId: dRecipe.id,
-        title: dRecipe.title,
-        servings,
-        createdAt: now,
-      });
-    }
+    take('breakfast', breakfasts);
+    const cookedExtra = prevDinner && prevDinner.servings >= servings * 2 ? prevDinner : null;
+    take('lunch', lunches, cookedExtra);
+    prevDinner = take('dinner', dinners);
   }
 
   return result;

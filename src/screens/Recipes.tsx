@@ -12,7 +12,7 @@ const TAG_CHIPS = [
   { id: 'all', label: 'Все' },
   { id: 'завтрак', label: 'Завтраки' },
   { id: 'ужин', label: 'Обед и ужин' },
-  { id: 'напиток', label: 'Смузи и напитки 🥤' },
+  { id: 'напиток', label: 'Смузи и напитки' },
   { id: 'quick', label: 'До 25 мин' },
   { id: 'впрок', label: 'Впрок' },
 ];
@@ -70,7 +70,7 @@ export function Recipes() {
           <a
             className="icon-btn"
             href={href('chef')}
-            aria-label="Шеф-повар ИИ"
+            aria-label="Придумать рецепт из того, что есть"
             style={{ color: 'var(--brand)' }}
           >
             <IconSpark width={18} height={18} />
@@ -108,14 +108,14 @@ export function Recipes() {
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <a
-                className="btn primary sm"
+                className="btn small"
                 href={href('scan')}
                 style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
                 <IconScan width={16} height={16} /> Сфотографировать полку
               </a>
               <a
-                className="btn ghost sm"
+                className="btn small ghost"
                 href={href('fridge')}
                 style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
               >
@@ -139,7 +139,7 @@ export function Recipes() {
         )}
 
         {!q && (
-          <div className="seg" style={{ overflowX: 'auto', paddingBottom: 2 }}>
+          <div className="seg chips-row">
             {TAG_CHIPS.map((c) => (
               <button
                 key={c.id}
@@ -154,7 +154,7 @@ export function Recipes() {
         )}
       </div>
 
-      <div className="stack">
+      <div className="stack" style={{ marginTop: 4 }}>
         {visible.map((m) => <RecipeCard key={m.recipe.id} match={m} hasItems={hasItems} />)}
         {ctx && visible.length === 0 && (
           <Empty

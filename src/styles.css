@@ -361,39 +361,27 @@ button.chip.on { background: var(--brand-soft); border-color: var(--brand); colo
 }
 .pcard-actions .btn { min-height: 50px; }
 
-/* ——— Окно обновления PWA ——— */
-.update-prompt-scrim {
-  position: fixed; inset: 0; background: var(--scrim); z-index: 999;
-  display: flex; align-items: flex-end; justify-content: center;
-  padding: 16px; padding-bottom: calc(var(--safe-bottom) + 20px);
-  animation: fade .2s ease-out; -webkit-tap-highlight-color: transparent;
+/* ——— Новая версия приложения ——— */
+.update-bar {
+  position: fixed; left: 10px; right: 10px; z-index: 25; max-width: 620px; margin: 0 auto;
+  bottom: calc(var(--tabbar) + var(--safe-bottom) + 10px);
+  display: flex; align-items: center; gap: 6px; padding: 10px 10px 10px 14px; border-radius: 16px;
+  background: var(--ink); color: var(--ground); box-shadow: 0 12px 28px -14px var(--shadow);
 }
-@media (min-width: 480px) {
-  .update-prompt-scrim {
-    align-items: center;
-  }
-}
-.update-prompt-card {
-  width: 100%; max-width: 400px;
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: 22px; padding: 20px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-  animation: rise .25s ease-out;
-  display: flex; flex-direction: column; align-items: flex-start;
-}
-.update-prompt-badge {
-  font-size: 12px; font-weight: 700; color: var(--brand);
-  background: var(--brand-soft); padding: 4px 10px; border-radius: 12px;
-}
+.update-bar b { display: block; font-size: 14px; }
+.update-bar span { display: block; font-size: 12.5px; opacity: .75; }
+.update-bar .btn.quiet { color: var(--ground); }
+
+/* ——— Скан: очередь, рамки на фото, строки проверки ——— */
 .scan-job { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--surface); }
 .scan-job .thumb { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; background: var(--sunken); flex: 0 0 auto; }
 
 .photo-view { position: relative; border-radius: 16px; overflow: hidden; background: #101815; }
 .photo-view img { width: 100%; display: block; }
 .bbox { position: absolute; border: 2px solid #F5C12A; border-radius: 8px; pointer-events: none; }
-.bbox.q { border-style: dashed; border-color: #FFFFFF; }
+.bbox.q { border-style: dashed; border-color: #F3F6F4; }
 .bbox span { position: absolute; left: -2px; top: -20px; background: #F5C12A; color: #1A1405; font: 700 10px/1 var(--mono); padding: 4px 6px; border-radius: 5px 5px 5px 0; white-space: nowrap; }
-.bbox.q span { background: #FFFFFF; }
+.bbox.q span { background: #F3F6F4; }
 .photo-tabs { display: flex; gap: 6px; margin-top: 8px; }
 .fill-scale { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
 .fill-scale button { height: 30px; border-radius: 8px; border: 0; background: var(--surface-2); }
@@ -464,3 +452,119 @@ button.chip.on { background: var(--brand-soft); border-color: var(--brand); colo
 .check input { width: 18px; height: 18px; accent-color: var(--brand); }
 .spinner { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ——— Общие мелочи ——— */
+.warn { color: var(--soon); font-weight: 600; }
+.error-text { color: var(--bad); }
+.notice-link { color: var(--ink); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; justify-self: start; }
+.file-btn { position: relative; overflow: hidden; }
+.file-btn input { position: absolute; inset: 0; opacity: 0; width: 100%; }
+
+/* ——— Подсказка пошаговой съёмки ——— */
+.cam-guide {
+  position: absolute; left: 12px; right: 12px; top: calc(var(--safe-top) + 64px); z-index: 3;
+  display: grid; gap: 4px; padding: 14px 16px; border-radius: 18px;
+  background: rgba(20, 28, 25, .82); backdrop-filter: blur(12px); color: #F3F6F4;
+}
+.cam-guide b { font-size: 16px; line-height: 1.3; }
+.cam-guide span { font-size: 13.5px; color: rgba(243, 246, 244, .78); line-height: 1.4; }
+.cam-guide .cam-guide-step { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #F5C12A; }
+.cam-guide .cam-guide-code { font-size: 12px; color: rgba(243, 246, 244, .6); }
+.cam-shot button svg { width: 14px; height: 14px; }
+
+/* ——— Проверка чека и полок ——— */
+.review { padding-bottom: calc(var(--safe-bottom) + 96px); }
+.review-wait { display: grid; gap: 18px; justify-items: center; text-align: center; padding: 20px 8px; }
+.review-wait img { width: 140px; height: 180px; object-fit: cover; border-radius: 16px; opacity: .85; }
+.review-wait p { max-width: 32ch; }
+.review-actions {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; max-width: 640px; margin: 0 auto;
+  padding: 14px 14px calc(var(--safe-bottom) + 14px);
+  background: linear-gradient(transparent, var(--ground) 35%);
+}
+.round-check {
+  width: 26px; height: 26px; border-radius: 50%; flex: 0 0 auto; padding: 0; display: grid; place-items: center;
+  border: 2px solid var(--line); background: var(--surface); color: var(--surface);
+}
+.round-check.on { background: var(--brand); border-color: var(--brand); }
+.round-check svg { width: 15px; height: 15px; }
+.draft-name { flex: 1; min-width: 0; display: grid; gap: 2px; background: none; border: 0; padding: 0; text-align: left; color: inherit; }
+.draft-name b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.draft-name small { color: var(--ink-3); font-size: 12.5px; }
+.draft.open { background: var(--surface-2); }
+.draft-edit { display: grid; gap: 12px; padding-top: 4px; }
+
+/* ——— Покупки ——— */
+.add-row { display: flex; gap: 8px; }
+.add-row .input { flex: 1; }
+.add-row .btn { min-height: 46px; width: 50px; padding: 0; flex: 0 0 auto; }
+.cart-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 12px 14px; border-radius: 16px; background: var(--brand-soft); }
+.cart-banner b { display: block; color: var(--brand); }
+.cart-banner span { display: block; font-size: 13px; color: var(--ink-2); margin-top: 2px; }
+.cart-banner-actions { display: flex; gap: 4px; align-items: center; }
+.shop-row { display: flex; align-items: center; gap: 10px; padding: 10px 8px 10px 12px; background: var(--surface); }
+.shop-row .nm { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.shop-row .nm b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shop-row .nm small { color: var(--ink-3); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shop-row .qty { font-family: var(--mono); font-size: 12.5px; color: var(--ink-2); white-space: nowrap; }
+.shop-row.done .nm b { text-decoration: line-through; color: var(--ink-3); font-weight: 500; }
+.shop-row.done .dot, .shop-row.done .qty { opacity: .5; }
+.row-remove { width: 34px; height: 34px; border: 0; background: none; color: var(--ink-3); display: grid; place-items: center; border-radius: 10px; flex: 0 0 auto; }
+.row-remove svg { width: 16px; height: 16px; }
+
+/* ——— Рацион ——— */
+.week-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.week-nav b { font-size: 15px; }
+.icon-btn.flip svg { transform: scaleX(-1); }
+.week-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 5px; border-radius: 16px; background: var(--surface); }
+.week-day {
+  position: relative; display: grid; justify-items: center; gap: 2px; padding: 8px 0 10px; border: 0; border-radius: 12px;
+  background: transparent; color: var(--ink);
+}
+.week-day span { font-size: 11px; color: var(--ink-3); }
+.week-day b { font-size: 16px; }
+.week-day.today::after { content: ""; position: absolute; bottom: 4px; width: 4px; height: 4px; border-radius: 50%; background: var(--brand); }
+.week-day.on { background: var(--ink); color: var(--ground); }
+.week-day.on span { color: var(--ground); opacity: .7; }
+.week-day.on.today::after { background: var(--yolk); }
+.meal-slot { background: var(--surface); border-radius: 16px; padding: 10px 12px 12px; display: grid; gap: 8px; }
+.meal-slot > header { display: flex; align-items: center; justify-content: space-between; }
+.meal-slot-title { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.meal-slot-body { display: flex; gap: 12px; align-items: center; color: inherit; text-decoration: none; }
+.meal-slot-body b { font-size: 15.5px; line-height: 1.25; }
+.slot-btn { width: 36px; height: 36px; border-radius: 11px; border: 0; background: var(--surface-2); color: var(--ink-2); display: grid; place-items: center; }
+.slot-btn svg { width: 17px; height: 17px; }
+.slot-btn.on { background: var(--brand-soft); color: var(--brand); }
+.settings-link { border: 1px solid var(--line); text-align: left; color: inherit; }
+.settings-link .chevron { width: 18px; height: 18px; color: var(--ink-3); transform: scaleX(-1); flex: 0 0 auto; }
+
+.tab { position: relative; }
+.tab-badge {
+  position: absolute; top: 2px; left: calc(50% + 4px); min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
+  display: grid; place-items: center; font-size: 10.5px; font-weight: 700; background: var(--brand); color: var(--surface);
+}
+.chips-row { padding-bottom: 2px; }
+.sheet-close svg { width: 18px; height: 18px; }
+
+/* ——— Голосовой ввод ——— */
+.voice-hero { display: flex; align-items: center; gap: 16px; padding: 16px; border-radius: 20px; background: var(--surface); }
+.voice-mic {
+  width: 72px; height: 72px; border-radius: 50%; border: 0; flex: 0 0 auto; display: grid; place-items: center;
+  background: var(--brand); color: var(--surface); transition: box-shadow .2s, background .2s;
+}
+.voice-mic svg { width: 32px; height: 32px; }
+.voice-mic.on { background: var(--bad); box-shadow: 0 0 0 8px var(--bad-soft); animation: mic-pulse 1.4s ease-in-out infinite; }
+.voice-mic:disabled { background: var(--surface-2); color: var(--ink-3); }
+@keyframes mic-pulse { 50% { box-shadow: 0 0 0 14px var(--bad-soft); } }
+.voice-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--surface); }
+.voice-row.off .nm, .voice-row.off .voice-qty { opacity: .45; }
+.voice-row .nm { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.voice-row .nm b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.voice-row .nm small { color: var(--ink-3); font-size: 12.5px; }
+.voice-qty { display: grid; justify-items: center; gap: 2px; width: 118px; flex: 0 0 auto; }
+.voice-qty .stepper { grid-template-columns: 34px 1fr 34px; }
+.voice-qty .stepper button, .voice-qty .stepper input { height: 36px; }
+.voice-qty small { font-size: 11px; color: var(--ink-3); }
+.cart-banner > .grow { flex: 1 1 100%; }
+.cart-banner-actions { margin-left: -10px; }
+.sheet-footer .row-gap > .btn { flex: 1 1 0; white-space: nowrap; }
