@@ -1,7 +1,7 @@
 import { newId } from '../data/db';
 import type { InventoryItem, ItemSource } from '../data/types';
 import type { GeneratedRecipe, RecognizedItem } from '../shared/aiSchemas';
-import { isISODate } from '../shared/dates';
+import { normalizeToISODate } from '../shared/dates';
 import { estimateExpiry } from '../shared/freshness';
 import { getProduct, guessProductKey, type Category, type Location } from '../shared/products';
 import type { Recipe } from '../shared/recipeTypes';
@@ -28,7 +28,7 @@ export function makeItem(input: ItemDraftInput): InventoryItem {
   const category = input.category ?? product?.category ?? 'other';
   const location = input.location ?? product?.location ?? 'fridge';
   const openedAt = input.opened ? input.purchasedAt : null;
-  const packageDate = isISODate(input.packageDate) ? input.packageDate : null;
+  const packageDate = normalizeToISODate(input.packageDate);
   const { expiresAt, isEstimate } = estimateExpiry({
     productKey, category, location, purchasedAt: input.purchasedAt, openedAt, packageDate,
   });
@@ -83,7 +83,7 @@ export function toReviewDraft(item: RecognizedItem, index: number): ReviewDraft 
     unit: item.unit,
     fill: item.fill === null ? null : clamp(Math.round(item.fill * 4) / 4),
     location: item.location,
-    packageDate: isISODate(item.expires_at) ? item.expires_at : null,
+    packageDate: normalizeToISODate(item.expires_at),
     confidence: clamp(item.confidence),
     photoIndex: Math.max(0, Math.round(item.photo_index)),
     box: item.box && { x: clamp(item.box.x), y: clamp(item.box.y), w: clamp(item.box.w), h: clamp(item.box.h) },
@@ -103,7 +103,7 @@ export function draftToItem(d: ReviewDraft, purchasedAt: string, source: ItemSou
     location: d.location,
     packageDate: d.packageDate,
     purchasedAt,
-    opened: d.fill !== null && d.fill < 1,
+    opened: false,
     source,
   });
 }

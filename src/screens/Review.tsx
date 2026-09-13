@@ -150,7 +150,7 @@ function DraftRow({ draft: d, today, purchasedAt, onChange }: { draft: ReviewDra
   const product = getProduct(d.productKey);
   const { expiresAt, isEstimate } = estimateExpiry({
     productKey: d.productKey, category: d.category, location: d.location, purchasedAt,
-    openedAt: d.fill !== null && d.fill < 1 ? purchasedAt : null, packageDate: d.packageDate,
+    openedAt: null, packageDate: d.packageDate,
   });
   const step = d.unit === 'pcs' ? 1 : d.qty >= 500 ? 100 : 50;
 

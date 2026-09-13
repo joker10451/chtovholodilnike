@@ -18,7 +18,7 @@ export function ItemSheet({ item, onClose }: { item: InventoryItem | null; onClo
   const step = draft.unit === 'g' || draft.unit === 'ml' ? (draft.qty >= 500 ? 100 : 50) : 1;
 
   function recompute(next: InventoryItem): InventoryItem {
-    const packageDate = item!.isEstimate ? null : item!.expiresAt;
+    const packageDate = item!.expiresAt;
     const { expiresAt, isEstimate } = estimateExpiry({
       productKey: next.productKey, category: next.category, location: next.location,
       purchasedAt: next.purchasedAt, openedAt: next.openedAt, packageDate,

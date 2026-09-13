@@ -84,3 +84,56 @@ export function formatDateHuman(iso: string): string {
   return `${d} ${MONTHS_GENITIVE[m - 1]}`;
 }
 
+/** Нормализует дату из любого формата (2026-10-24, 24.10.2026, 24.10, 24 октября) в YYYY-MM-DD */
+export function normalizeToISODate(raw: unknown, baseYear = new Date().getFullYear()): string | null {
+  if (typeof raw !== 'string') return null;
+  const s = raw.trim().toLowerCase();
+  if (!s) return null;
+
+  // 1. Уже ISO YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    return isISODate(s) ? s : null;
+  }
+
+  // 2. ДД.ММ.ГГГГ или ДД.ММ.ГГ
+  const dmyMatch = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
+  if (dmyMatch) {
+    const day = dmyMatch[1].padStart(2, '0');
+    const month = dmyMatch[2].padStart(2, '0');
+    let year = dmyMatch[3];
+    if (year.length === 2) year = `20${year}`;
+    const iso = `${year}-${month}-${day}`;
+    return isISODate(iso) ? iso : null;
+  }
+
+  // 3. ДД.ММ (без года: 24.10)
+  const dmMatch = s.match(/^(\d{1,2})[./-](\d{1,2})$/);
+  if (dmMatch) {
+    const day = dmMatch[1].padStart(2, '0');
+    const month = dmMatch[2].padStart(2, '0');
+    const iso = `${baseYear}-${month}-${day}`;
+    return isISODate(iso) ? iso : null;
+  }
+
+  // 4. Текстовый месяц: "24 октября", "24 окт"
+  const monthMap: Record<string, string> = {
+    янв: '01', фев: '02', мар: '03', апр: '04', май: '05', мая: '05',
+    июн: '06', июл: '07', авг: '08', сен: '09', окт: '10', ноя: '11', дек: '12',
+  };
+  const textMatch = s.match(/^(\d{1,2})\s+([а-яё]+)(?:\s+(\d{2,4}))?$/);
+  if (textMatch) {
+    const day = textMatch[1].padStart(2, '0');
+    const monthPrefix = textMatch[2].slice(0, 3);
+    const month = monthMap[monthPrefix];
+    if (month) {
+      let year = textMatch[3] || String(baseYear);
+      if (year.length === 2) year = `20${year}`;
+      const iso = `${year}-${month}-${day}`;
+      return isISODate(iso) ? iso : null;
+    }
+  }
+
+  return null;
+}
+
+
