@@ -90,18 +90,48 @@ export function Shopping() {
 
   async function handleShare() {
     if (!items || items.length === 0) return;
-    const lines = items.map((i) => `${i.checked ? '✓' : '—'} ${i.name}${i.qty ? ` (${formatQty(i.qty, i.unit)})` : ''}${i.recipeTitle ? ` [для: ${i.recipeTitle}]` : ''}`);
-    const text = `Список покупок (${items.length}):\n${lines.join('\n')}`;
+
+    const unbought = items.filter((i) => !i.checked);
+    const bought = items.filter((i) => i.checked);
+
+    const lines: string[] = ['🛒 Что купить:'];
+    if (unbought.length > 0) {
+      unbought.forEach((i) => {
+        const qtyStr = i.qty ? ` — ${formatQty(i.qty, i.unit)}` : '';
+        lines.push(`◻️ ${i.name}${qtyStr}`);
+      });
+    } else {
+      lines.push('Все продукты уже куплены! 🎉');
+    }
+
+    if (bought.length > 0) {
+      lines.push('');
+      lines.push('✅ Уже куплено:');
+      bought.forEach((i) => {
+        const qtyStr = i.qty ? ` — ${formatQty(i.qty, i.unit)}` : '';
+        lines.push(`☑️ ${i.name}${qtyStr}`);
+      });
+    }
+
+    const text = lines.join('\n');
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Что купить в магазине',
+          text,
+        });
+        return;
+      } catch (e: unknown) {
+        if ((e as Error)?.name === 'AbortError') return;
+      }
+    }
 
     try {
-      if (navigator.share) {
-        await navigator.share({ text });
-      } else {
-        await navigator.clipboard.writeText(text);
-        toast('Список скопирован в буфер');
-      }
+      await navigator.clipboard.writeText(text);
+      toast('Чек-лист скопирован в буфер обмена');
     } catch {
-      /* отмена */
+      toast('Не удалось скопировать список');
     }
   }
 
@@ -151,6 +181,35 @@ export function Shopping() {
             <IconPlus />
           </button>
         </form>
+
+        {total > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, margin: '2px 0' }}>
+            <button
+              type="button"
+              className="btn small ghost"
+              onClick={handleShare}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontWeight: 600,
+                fontSize: '0.85rem',
+              }}
+            >
+              <IconShare width={16} height={16} /> Отправить в Telegram / WhatsApp
+            </button>
+            {checkedCount > 0 && (
+              <button
+                type="button"
+                className="btn small quiet"
+                onClick={handleClearDone}
+                style={{ fontSize: '0.82rem' }}
+              >
+                Очистить купленное
+              </button>
+            )}
+          </div>
+        )}
 
         {checkedCount > 0 && (
           <div
