@@ -171,9 +171,59 @@ describe('разбор фразы без интернета', () => {
   });
 });
 
+import { generateWeekPlan, addWeekPlanToShopping } from './planGenerator';
+import { getMonday } from '../shared/dates';
+
 describe('схемы для нейросети', () => {
   it('переводятся в JSON Schema без ошибок', () => {
     expect(() => z.toJSONSchema(RecognitionSchema)).not.toThrow();
     expect(() => z.toJSONSchema(GeneratedRecipeSchema)).not.toThrow();
+  });
+});
+
+describe('рацион на неделю', () => {
+  const mon = getMonday('2026-09-14');
+
+  it('формирует план на 7 дней по 3 приёма пищи', () => {
+    const c = ctx([item({ productKey: 'egg', qty: 10, unit: 'pcs' })]);
+    const plan = generateWeekPlan({
+      mondayIso: mon,
+      ctx: c,
+      recipes: BASE_RECIPES,
+      servings: 2,
+    });
+
+    expect(plan).toHaveLength(21);
+    const breakfasts = plan.filter((m) => m.slot === 'breakfast');
+    const lunches = plan.filter((m) => m.slot === 'lunch');
+    const dinners = plan.filter((m) => m.slot === 'dinner');
+
+    expect(breakfasts).toHaveLength(7);
+    expect(lunches).toHaveLength(7);
+    expect(dinners).toHaveLength(7);
+  });
+
+  it('сохраняет заблокированные пользователем блюда при пересборке', () => {
+    const c = ctx([]);
+    const initial = generateWeekPlan({
+      mondayIso: mon,
+      ctx: c,
+      recipes: BASE_RECIPES,
+      servings: 2,
+    });
+
+    // Блокируем завтрак понедельника
+    const lockedMeal = { ...initial[0], locked: true, title: 'Мой любимый омлет' };
+    const regenerated = generateWeekPlan({
+      mondayIso: mon,
+      ctx: c,
+      recipes: BASE_RECIPES,
+      existingMeals: [lockedMeal],
+      servings: 2,
+    });
+
+    const b0 = regenerated.find((m) => m.id === lockedMeal.id);
+    expect(b0?.title).toBe('Мой любимый омлет');
+    expect(b0?.locked).toBe(true);
   });
 });

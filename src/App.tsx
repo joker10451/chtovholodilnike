@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { IconBook, IconCart, IconChef, IconFridge, IconScan } from './components/icons';
+import { IconBook, IconCal, IconCart, IconFridge, IconScan } from './components/icons';
 import { ToastHost } from './components/ui';
 import { useMetaLoading, useShoppingList } from './data/repo';
 import { processScanQueue, recoverScans } from './data/scanQueue';
@@ -10,6 +10,7 @@ import { Chef } from './screens/Chef';
 import { Cook } from './screens/Cook';
 import { Fridge } from './screens/Fridge';
 import { Onboarding } from './screens/Onboarding';
+import { Plan } from './screens/Plan';
 import { RecipeDetail } from './screens/RecipeDetail';
 import { Recipes } from './screens/Recipes';
 import { Review } from './screens/Review';
@@ -24,9 +25,10 @@ const TAB_OF: Record<string, string> = {
   catalog: 'recipes',
   scan: 'scan',
   review: 'scan',
+  plan: 'plan',
   shopping: 'shopping',
-  chef: 'chef',
-  settings: 'chef',
+  chef: 'recipes',
+  settings: 'fridge',
 };
 
 export function App() {
@@ -55,6 +57,7 @@ export function App() {
     case 'catalog': screen = <Catalog />; break;
     case 'scan': screen = <Scan />; break;
     case 'review': screen = <Review id={param} />; break;
+    case 'plan': screen = <Plan />; break;
     case 'shopping': screen = <Shopping />; break;
     case 'chef': screen = <Chef />; break;
     case 'settings': screen = <Settings />; break;
@@ -81,6 +84,10 @@ export function App() {
               <IconScan />
             </a>
           </div>
+          <a className={`tab${tab === 'plan' ? ' on' : ''}`} href={href('plan')}>
+            <IconCal />
+            Рацион
+          </a>
           <a className={`tab${tab === 'shopping' ? ' on' : ''}`} href={href('shopping')} style={{ position: 'relative' }}>
             <IconCart />
             Покупки
@@ -106,10 +113,6 @@ export function App() {
                 {unboughtCount}
               </span>
             )}
-          </a>
-          <a className={`tab${tab === 'chef' ? ' on' : ''}`} href={href('chef')}>
-            <IconChef />
-            Шеф
           </a>
         </nav>
       )}

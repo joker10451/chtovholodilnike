@@ -34,3 +34,26 @@ export const IconShare = (p: P) => (
     <path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v14" />
   </svg>
 );
+export const IconCal = (p: P) => (
+  <svg {...base} {...p}>
+    <rect x="3.5" y="4.5" width="17" height="16" rx="2.5" />
+    <path d="M16 2.5v4M8 2.5v4M3.5 9.5h17" />
+  </svg>
+);
+export const IconLock = (p: P) => (
+  <svg {...base} {...p}>
+    <rect x="5" y="11" width="14" height="10" rx="2" />
+    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+  </svg>
+);
+export const IconUnlock = (p: P) => (
+  <svg {...base} {...p}>
+    <rect x="5" y="11" width="14" height="10" rx="2" />
+    <path d="M8 11V7a4 4 0 0 1 7.8-1.2" />
+  </svg>
+);
+export const IconSwap = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
+  </svg>
+);

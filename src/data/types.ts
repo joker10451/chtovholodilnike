@@ -46,7 +46,23 @@ export interface ShoppingItem {
   createdAt: number;
 }
 
-export type RecordKind = 'item' | 'recipe' | 'settings' | 'cooklog' | 'shopping';
+export type MealSlot = 'breakfast' | 'lunch' | 'dinner';
+
+export interface PlannedMeal {
+  id: string; // e.g. `${date}_${slot}`
+  date: string; // YYYY-MM-DD
+  slot: MealSlot;
+  recipeId: string;
+  title: string;
+  servings: number;
+  isLeftover?: boolean;
+  leftoverFromDate?: string;
+  locked?: boolean;
+  note?: string;
+  createdAt: number;
+}
+
+export type RecordKind = 'item' | 'recipe' | 'settings' | 'cooklog' | 'shopping' | 'plan';
 
 /** Любая синхронизируемая запись. dirty = 1 — ещё не отправлена на сервер */
 export interface SyncRecord<T = unknown> {

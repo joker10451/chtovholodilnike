@@ -6,7 +6,8 @@ import { estimateExpiry } from '../shared/freshness';
 import type { ItemUnit } from '../shared/units';
 import type { Recipe } from '../shared/recipeTypes';
 import { db, DEFAULT_META, getMeta, newId } from './db';
-import type { CookLogEntry, DeviceMeta, HouseholdSettings, InventoryItem, RecordKind, ScanJob, ShoppingItem, SyncRecord } from './types';
+import type { CookLogEntry, DeviceMeta, HouseholdSettings, InventoryItem, PlannedMeal, RecordKind, ScanJob, ShoppingItem, SyncRecord } from './types';
+import { getWeekDays } from '../shared/dates';
 
 export const SETTINGS_ID = 'settings';
 
@@ -272,3 +273,27 @@ export async function transferCheckedToFridge(today: string): Promise<number> {
   await deleteRecords(checked.map((c) => c.id));
   return checked.length;
 }
+
+// ——— Рацион (план питания) ———
+
+export function useMealPlan(mondayIso: string): PlannedMeal[] | undefined {
+  return useLiveQuery(async () => {
+    const rows = await liveOf<PlannedMeal>('plan');
+    const weekDays = new Set(getWeekDays(mondayIso));
+    return rows.filter((r) => weekDays.has(r.date));
+  }, [mondayIso]);
+}
+
+export async function savePlannedMeal(meal: PlannedMeal): Promise<void> {
+  await putRecord<PlannedMeal>('plan', meal.id, meal);
+}
+
+export async function deletePlannedMeal(id: string): Promise<void> {
+  await deleteRecords([id]);
+}
+
+export async function saveFullMealPlan(meals: PlannedMeal[]): Promise<void> {
+  const rows = meals.map((m) => ({ id: m.id, data: m }));
+  await putRecords('plan', rows);
+}
+

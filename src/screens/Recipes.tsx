@@ -65,6 +65,16 @@ export function Recipes() {
             ? `${recipes.length} ${plural(recipes.length, 'рецепт', 'рецепта', 'рецептов')} · подобраны по холодильнику`
             : `${recipes.length} ${plural(recipes.length, 'рецепт', 'рецепта', 'рецептов')} · каталог блюд`
         }
+        right={
+          <a
+            className="icon-btn"
+            href={href('chef')}
+            aria-label="Шеф-повар ИИ"
+            style={{ color: 'var(--brand)' }}
+          >
+            <IconSpark width={18} height={18} />
+          </a>
+        }
       />
 
       <div className="stack">

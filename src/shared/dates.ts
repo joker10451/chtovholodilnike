@@ -33,3 +33,46 @@ export function shortDate(iso: string): string {
   const [, m, d] = iso.split('-');
   return `${d}.${m}`;
 }
+
+const MONTHS_GENITIVE = [
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+];
+
+const WEEKDAY_SHORT = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+
+/** Возвращает понедельник недели для переданной даты */
+export function getMonday(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  const day = dt.getDay(); // 0 is Sunday, 1 is Monday, ...
+  const diff = day === 0 ? -6 : 1 - day;
+  return addDays(iso, diff);
+}
+
+/** Возвращает массив из 7 дат (с понедельника по воскресенье) */
+export function getWeekDays(mondayIso: string): string[] {
+  return Array.from({ length: 7 }, (_, i) => addDays(mondayIso, i));
+}
+
+/** 2026-09-14 → { short: 'Пн', num: '14' } */
+export function getDayDisplay(iso: string): { short: string; num: string } {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  return {
+    short: WEEKDAY_SHORT[dt.getDay()],
+    num: String(d),
+  };
+}
+
+/** 14–20 сентября */
+export function formatWeekRange(mondayIso: string): string {
+  const sundayIso = addDays(mondayIso, 6);
+  const [, m1, d1] = mondayIso.split('-').map(Number);
+  const [, m2, d2] = sundayIso.split('-').map(Number);
+
+  if (m1 === m2) {
+    return `${d1}–${d2} ${MONTHS_GENITIVE[m1 - 1]}`;
+  }
+  return `${d1} ${MONTHS_GENITIVE[m1 - 1]} – ${d2} ${MONTHS_GENITIVE[m2 - 1]}`;
+}
