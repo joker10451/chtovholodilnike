@@ -43,8 +43,12 @@ function AddOne({ onDone }: { onDone: () => void }) {
   }
 
   async function add() {
-    if (!name.trim()) return;
-    const item = makeItem({ name, qty, unit, location, packageDate: date || null, purchasedAt: todayISO(), opened, source: 'manual' });
+    const trimmed = name.trim();
+    if (!trimmed) {
+      toast('Введите название продукта');
+      return;
+    }
+    const item = makeItem({ name: trimmed, qty, unit, location, packageDate: date || null, purchasedAt: todayISO(), opened, source: 'manual' });
     await saveItems([item]);
     toast(`Добавлено: ${item.name}`);
     onDone();
@@ -53,51 +57,54 @@ function AddOne({ onDone }: { onDone: () => void }) {
   const step = unit === 'pcs' ? 1 : qty >= 500 ? 100 : 50;
 
   return (
-    <div className="stack-lg">
-      <label className="field">
-        <span>Что добавить</span>
-        <input className="input" list="products" placeholder="Например, творог" value={name} onChange={(e) => onName(e.target.value)} />
-        <datalist id="products">{PRODUCTS.map((p) => <option key={p.key} value={p.name} />)}</datalist>
-      </label>
-      <div className="field-row">
+    <>
+      <div className="stack" style={{ gap: 12 }}>
         <label className="field">
-          <span>Сколько</span>
-          <Stepper label="Количество" value={qty} step={step} onChange={(v) => { setTouched(true); setQty(v); }} />
+          <span>Что добавить</span>
+          <input className="input" list="products" placeholder="Например, творог" value={name} onChange={(e) => onName(e.target.value)} />
+          <datalist id="products">{PRODUCTS.map((p) => <option key={p.key} value={p.name} />)}</datalist>
         </label>
-        <label className="field">
-          <span>Единицы</span>
-          <select className="select" value={unit} onChange={(e) => { setTouched(true); setUnit(e.target.value as BaseUnit); }}>
-            {(['pcs', 'g', 'ml'] as BaseUnit[]).map((u) => <option key={u} value={u}>{UNIT_LABELS[u]}</option>)}
-          </select>
-        </label>
-      </div>
-      <div className="field">
-        <span>Где лежит</span>
-        <div className="wrap-gap">
-          {LOCATIONS.map((l) => (
-            <button key={l} type="button" className={`chip${location === l ? ' on' : ''}`} onClick={() => { setTouched(true); setLocation(l); }}>{LOCATION_LABELS[l]}</button>
-          ))}
+        <div className="field-row">
+          <label className="field">
+            <span>Сколько</span>
+            <Stepper label="Количество" value={qty} step={step} onChange={(v) => { setTouched(true); setQty(v); }} />
+          </label>
+          <label className="field">
+            <span>Единицы</span>
+            <select className="select" value={unit} onChange={(e) => { setTouched(true); setUnit(e.target.value as BaseUnit); }}>
+              {(['pcs', 'g', 'ml'] as BaseUnit[]).map((u) => <option key={u} value={u}>{UNIT_LABELS[u]}</option>)}
+            </select>
+          </label>
         </div>
+        <div className="field">
+          <span>Где лежит</span>
+          <div className="wrap-gap">
+            {LOCATIONS.map((l) => (
+              <button key={l} type="button" className={`chip${location === l ? ' on' : ''}`} onClick={() => { setTouched(true); setLocation(l); }}>{LOCATION_LABELS[l]}</button>
+            ))}
+          </div>
+        </div>
+        <div className="field-row">
+          <label className="field">
+            <span>Годен до (если есть на упаковке)</span>
+            <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </label>
+          <label className="check" style={{ alignSelf: 'end', minHeight: 46 }}>
+            <input type="checkbox" checked={opened} onChange={(e) => setOpened(e.target.checked)} /> Уже открыт
+          </label>
+        </div>
+        <p className="small muted" style={{ margin: 0 }}>Без даты срок посчитается примерно по типу продукта.</p>
       </div>
-      <div className="field-row">
-        <label className="field">
-          <span>Годен до (если есть на упаковке)</span>
-          <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </label>
-        <label className="check" style={{ alignSelf: 'end', minHeight: 46 }}>
-          <input type="checkbox" checked={opened} onChange={(e) => setOpened(e.target.checked)} /> Уже открыт
-        </label>
-      </div>
-      <p className="small muted">Без даты срок посчитается примерно по типу продукта.</p>
-      <div className="row-gap" style={{ marginTop: 8 }}>
+
+      <div className="sheet-footer">
         <button type="button" className="btn quiet" style={{ flex: 1 }} onClick={onDone}>
           Отмена
         </button>
-        <button className="btn primary" style={{ flex: 2 }} disabled={!name.trim()} onClick={add}>
-          Добавить
+        <button type="button" className="btn primary" style={{ flex: 2 }} onClick={add}>
+          Добавить в холодильник
         </button>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -141,49 +148,74 @@ function AddList({ onDone }: { onDone: () => void }) {
   if (lines) {
     const n = lines.filter((l) => l.include).length;
     return (
-      <div className="stack">
-        {note && <div className="notice">{note}</div>}
-        <div className="list">
-          {lines.map((l, i) => (
-            <label key={i} className="item-row" style={{ opacity: l.include ? 1 : 0.5 }}>
-              <input type="checkbox" checked={l.include} style={{ width: 20, height: 20, accentColor: 'var(--brand)' }}
-                onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, include: e.target.checked } : x)))} />
-              <span className="nm"><b>{l.name}</b><small>{LOCATION_LABELS[l.location]}</small></span>
-              <span className="mono small">{formatQty(l.qty, l.unit)}</span>
-            </label>
-          ))}
+      <>
+        <div className="stack" style={{ gap: 12 }}>
+          {note && <div className="notice">{note}</div>}
+          <div className="list">
+            {lines.map((l, i) => (
+              <label key={i} className="item-row" style={{ opacity: l.include ? 1 : 0.5 }}>
+                <input type="checkbox" checked={l.include} style={{ width: 20, height: 20, accentColor: 'var(--brand)' }}
+                  onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, include: e.target.checked } : x)))} />
+                <span className="nm"><b>{l.name}</b><small>{LOCATION_LABELS[l.location]}</small></span>
+                <span className="mono small">{formatQty(l.qty, l.unit)}</span>
+              </label>
+            ))}
+          </div>
+          {lines.length === 0 && <p className="muted">Не нашёл продуктов в этой фразе.</p>}
+          <button type="button" className="btn quiet" onClick={() => setLines(null)}>Изменить текст</button>
         </div>
-        {lines.length === 0 && <p className="muted">Не нашёл продуктов в этой фразе.</p>}
-        <div className="row-gap">
+
+        <div className="sheet-footer">
           <button type="button" className="btn quiet" style={{ flex: 1 }} onClick={onDone}>
             Отмена
           </button>
-          <button className="btn primary" style={{ flex: 2 }} disabled={n === 0} onClick={add}>
+          <button
+            type="button"
+            className="btn primary"
+            style={{ flex: 2 }}
+            disabled={n === 0}
+            onClick={add}
+          >
             Добавить {n}
           </button>
         </div>
-        <button className="btn quiet" onClick={() => setLines(null)}>Изменить текст</button>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="stack">
-      <textarea
-        className="textarea"
-        placeholder="Десяток яиц, литр молока, полкило фарша, 3 помидора"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-      />
-      <p className="small muted">Чтобы надиктовать, нажмите микрофон на клавиатуре iPhone.</p>
-      <div className="row-gap">
+    <>
+      <div className="stack" style={{ gap: 12 }}>
+        <textarea
+          className="textarea"
+          rows={4}
+          placeholder="Десяток яиц, литр молока, полкило фарша, 3 помидора"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+        <p className="small muted">Чтобы надиктовать, нажмите микрофон на клавиатуре iPhone.</p>
+      </div>
+
+      <div className="sheet-footer">
         <button type="button" className="btn quiet" style={{ flex: 1 }} onClick={onDone}>
           Отмена
         </button>
-        <button className="btn primary" style={{ flex: 2 }} disabled={!text.trim() || busy} onClick={parse}>
-          {busy ? <Spinner /> : null} Разобрать
+        <button
+          type="button"
+          className="btn primary"
+          style={{ flex: 2 }}
+          disabled={busy}
+          onClick={() => {
+            if (!text.trim()) {
+              toast('Введите или надиктуйте список продуктов');
+              return;
+            }
+            void parse();
+          }}
+        >
+          {busy ? <Spinner /> : null} Разобрать список
         </button>
       </div>
-    </div>
+    </>
   );
 }

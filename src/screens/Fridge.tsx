@@ -92,21 +92,32 @@ export function Fridge() {
       )}
 
       {visible.length > 0 && (
-        <div className="list">
-          {visible.map((item) => (
-            <button key={item.id} className="item-row" onClick={() => setEditing(item)}>
-              <span className="dot"><i style={{ background: CATEGORY_DOT[item.category] }} /></span>
-              <span className="nm">
-                <b>{item.name}</b>
-                <small className="num">
-                  {formatQty(item.qty, item.unit)}
-                  {item.openedAt ? ' · открыт' : ''}
-                  {filter === 'all' && item.location !== 'fridge' ? ` · ${LOCATION_LABELS[item.location].toLowerCase()}` : ''}
-                </small>
-              </span>
-              <Sticker expiresAt={item.expiresAt} isEstimate={item.isEstimate} today={today} />
-            </button>
-          ))}
+        <div className="stack" style={{ gap: 10 }}>
+          <div className="list">
+            {visible.map((item) => (
+              <button key={item.id} className="item-row" onClick={() => setEditing(item)}>
+                <span className="dot"><i style={{ background: CATEGORY_DOT[item.category] }} /></span>
+                <span className="nm">
+                  <b>{item.name}</b>
+                  <small className="num">
+                    {formatQty(item.qty, item.unit)}
+                    {item.openedAt ? ' · открыт' : ''}
+                    {filter === 'all' && item.location !== 'fridge' ? ` · ${LOCATION_LABELS[item.location].toLowerCase()}` : ''}
+                  </small>
+                </span>
+                <Sticker expiresAt={item.expiresAt} isEstimate={item.isEstimate} today={today} />
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            className="btn ghost block"
+            onClick={() => setAdding(true)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 }}
+          >
+            <IconPlus width={18} height={18} /> Добавить продукт
+          </button>
         </div>
       )}
 

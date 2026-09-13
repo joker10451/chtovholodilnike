@@ -96,9 +96,9 @@ export function ItemSheet({ item, onClose }: { item: InventoryItem | null; onClo
           <p className="small muted">После вскрытия {product.name.toLowerCase()} хранится около {product.opened} дн. — срок пересчитан.</p>
         )}
 
-        <div className="stack">
-          <button className="btn block" onClick={save}>Сохранить</button>
-          <button className="btn danger block" onClick={finish}>Закончилось</button>
+        <div className="sheet-footer">
+          <button className="btn danger" style={{ flex: 1 }} onClick={finish}>Закончилось</button>
+          <button className="btn primary" style={{ flex: 2 }} onClick={save}>Сохранить</button>
         </div>
       </div>
     </Sheet>

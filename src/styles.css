@@ -95,6 +95,7 @@ img { max-width: 100%; display: block; }
 }
 .btn:disabled { opacity: .45; cursor: default; }
 .btn.block { width: 100%; }
+.btn.primary { background: var(--brand); color: #fff; }
 .btn.ghost { background: var(--surface); color: var(--ink); border: 1px solid var(--line); font-weight: 600; }
 .btn.quiet { background: transparent; color: var(--brand); font-weight: 600; min-height: 40px; padding: 0 10px; }
 .btn.danger { background: var(--bad-soft); color: var(--bad); }
@@ -168,14 +169,15 @@ button.chip.on { background: var(--brand-soft); border-color: var(--brand); colo
   animation: fade .15s ease-out; cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 .sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; max-height: 90dvh; overflow-y: auto;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; max-height: 90dvh;
+  display: flex; flex-direction: column;
   overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
   background: var(--ground); border-radius: 22px 22px 0 0;
-  padding: 10px 16px calc(var(--safe-bottom) + 20px); max-width: 640px; margin: 0 auto;
+  padding: 10px 16px calc(var(--safe-bottom) + 12px); max-width: 640px; margin: 0 auto;
   animation: rise .2s ease-out; box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18);
 }
-.sheet .grab { width: 44px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 12px; cursor: pointer; }
-.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.sheet .grab { width: 44px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 12px; cursor: pointer; flex-shrink: 0; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-shrink: 0; }
 .sheet-head h2 { font-size: 19px; margin: 0; flex: 1; }
 .sheet-close {
   width: 32px; height: 32px; border-radius: 50%; border: 0;
@@ -184,6 +186,16 @@ button.chip.on { background: var(--brand-soft); border-color: var(--brand); colo
   cursor: pointer; padding: 0; flex-shrink: 0; -webkit-tap-highlight-color: transparent;
 }
 .sheet-close:active { background: var(--line); transform: scale(0.94); }
+.sheet-body {
+  flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain; display: flex; flex-direction: column;
+}
+.sheet-footer {
+  position: sticky; bottom: 0; z-index: 10;
+  margin-top: auto; padding-top: 12px; padding-bottom: 4px;
+  border-top: 1px solid var(--line); background: var(--ground);
+  display: flex; gap: 10px; flex-shrink: 0;
+}
 @keyframes fade { from { opacity: 0; } }
 @keyframes rise { from { transform: translateY(24px); opacity: .6; } }
 

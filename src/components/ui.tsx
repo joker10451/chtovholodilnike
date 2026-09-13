@@ -26,7 +26,19 @@ export function Sticker({ expiresAt, isEstimate, today }: { expiresAt: string | 
   return <span className={`stk ${freshness(expiresAt, today)}`}>{stickerText(expiresAt, isEstimate, today)}</span>;
 }
 
-export function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title?: string; children: ReactNode }) {
+export function Sheet({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title?: string;
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -64,7 +76,10 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
             ✕
           </button>
         </div>
-        {children}
+        <div className="sheet-body">
+          {children}
+        </div>
+        {footer && <div className="sheet-footer">{footer}</div>}
       </div>
     </>
   );
