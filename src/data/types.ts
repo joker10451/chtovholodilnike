@@ -106,4 +106,6 @@ export interface DeviceMeta {
   inviteCode: string | null;
   syncCursor: string | null;
   lastSyncAt: number | null;
+  /** Когда последний раз сохраняли резервную копию в файл */
+  lastBackupAt: number | null;
 }

@@ -1,3 +1,4 @@
+import { useLiveQuery } from 'dexie-react-hooks';
 import { useState } from 'react';
 import { IconBack } from '../components/icons';
 import { Header, Sheet, Spinner, Stepper, toast, useOnline } from '../components/ui';
@@ -9,7 +10,7 @@ import {
 import type { SyncRecord } from '../data/types';
 import { AiRequestError, recognize } from '../lib/ai';
 import { usePwaUpdate } from '../lib/pwaUpdate';
-import { supabase } from '../lib/supabase';
+import { syncConfigured } from '../lib/supabase';
 import { todayISO } from '../shared/dates';
 import { PRODUCTS } from '../shared/products';
 import { plural } from './Fridge';
@@ -172,6 +173,7 @@ function StaplesSheet({ open, onClose, selected }: { open: boolean; onClose: () 
 
 function SyncSection() {
   const meta = useMeta();
+  const pending = useLiveQuery(() => db.records.where('dirty').equals(1).count(), []) ?? 0;
   const status = useSyncStatus();
   const online = useOnline();
   const [email, setEmail] = useState('');
@@ -188,7 +190,7 @@ function SyncSection() {
     try { await fn(); } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
 
-  if (!supabase) {
+  if (!syncConfigured) {
     return (
       <section className="stack">
         <div className="section-label">Общий холодильник</div>
@@ -201,6 +203,7 @@ function SyncSection() {
   }
 
   const lastSync = status.lastSyncAt ?? meta.lastSyncAt;
+  const pendingText = pending ? ` · не отправлено: ${pending}` : '';
 
   return (
     <section className="stack">
@@ -252,7 +255,7 @@ function SyncSection() {
                 <b>{meta.householdName}</b>
                 <div className="small muted">
                   {status.state === 'syncing' && 'Синхронизирую…'}
-                  {status.state === 'idle' && (lastSync ? `Синхронизировано в ${new Date(lastSync).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : 'Синхронизировано')}
+                  {status.state === 'idle' && (lastSync ? `Синхронизировано в ${new Date(lastSync).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : 'Синхронизировано')}{pendingText}
                   {status.state === 'offline' && 'Нет интернета — изменения отправятся позже'}
                   {status.state === 'error' && <span style={{ color: 'var(--bad)' }}>Ошибка: {status.error}</span>}
                 </div>
@@ -275,12 +278,18 @@ function SyncSection() {
 }
 
 function BackupSection() {
+  const meta = useMeta();
+
   async function exportData() {
     const records = await db.records.filter((r) => !r.deleted).toArray();
     const blob = new Blob([JSON.stringify({ app: 'holodilnik', version: 1, exportedAt: new Date().toISOString(), records }, null, 2)], { type: 'application/json' });
     const file = new File([blob], `holodilnik-${new Date().toISOString().slice(0, 10)}.json`, { type: 'application/json' });
     if (navigator.canShare?.({ files: [file] })) {
-      try { await navigator.share({ files: [file] }); } catch { /* закрыли окно */ }
+      try {
+        await navigator.share({ files: [file] });
+        await setMeta({ lastBackupAt: Date.now() });
+        toast('Копия сохранена');
+      } catch { /* закрыли окно «Поделиться» */ }
       return;
     }
     const url = URL.createObjectURL(blob);
@@ -289,6 +298,7 @@ function BackupSection() {
     a.download = file.name;
     a.click();
     URL.revokeObjectURL(url);
+    await setMeta({ lastBackupAt: Date.now() });
   }
 
   async function importData(file: File | undefined) {
@@ -296,6 +306,8 @@ function BackupSection() {
     try {
       const parsed = JSON.parse(await file.text()) as { app?: string; records?: SyncRecord[] };
       if (parsed.app !== 'holodilnik' || !Array.isArray(parsed.records)) throw new Error();
+      const products = parsed.records.filter((r) => r.kind === 'item').length;
+      if (!confirm(`Восстановить копию? В ней продуктов: ${products}, всего записей: ${parsed.records.length}. Совпадающие записи на телефоне заменятся.`)) return;
       const now = Date.now();
       await db.records.bulkPut(parsed.records.map((r) => ({ ...r, updatedAt: now, dirty: 1 as const })));
       toast(`Восстановлено записей: ${parsed.records.length}`);
@@ -309,12 +321,19 @@ function BackupSection() {
     <section className="stack">
       <div className="section-label">Резервная копия</div>
       <div className="card flat stack">
-        <p className="small muted">Сохраните продукты, свои рецепты и настройки в файл или перенесите их на другой телефон без синхронизации.</p>
+        <div>
+          <b>Файл с продуктами, рецептами и настройками</b>
+          <div className="small muted">
+            {meta.lastBackupAt
+              ? `Последняя копия: ${new Date(meta.lastBackupAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}`
+              : 'Копию ещё не сохраняли. Сохраните в «Файлы» или отправьте себе в мессенджер — пригодится при смене телефона.'}
+          </div>
+        </div>
         <div className="field-row">
           <button className="btn small ghost" onClick={exportData}>Сохранить файл</button>
-          <label className="btn small ghost" style={{ position: 'relative' }}>
+          <label className="btn small ghost file-btn">
             Восстановить
-            <input type="file" accept="application/json,.json" style={{ position: 'absolute', inset: 0, opacity: 0 }} onChange={(e) => { void importData(e.target.files?.[0]); e.target.value = ''; }} />
+            <input type="file" accept="application/json,.json" onChange={(e) => { void importData(e.target.files?.[0]); e.target.value = ''; }} />
           </label>
         </div>
       </div>

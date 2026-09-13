@@ -1,17 +1,32 @@
 import Dexie, { type EntityTable } from 'dexie';
 import type { DeviceMeta, ScanJob, SyncRecord } from './types';
 
-export const db = new Dexie('holodilnik') as Dexie & {
+/** Ответ нейросети, сохранённый, чтобы не отправлять одно и то же фото повторно */
+export interface AiCacheRow {
+  key: string;
+  value: unknown;
+  createdAt: number;
+}
+
+export type AppDb = Dexie & {
   records: EntityTable<SyncRecord, 'id'>;
   scans: EntityTable<ScanJob, 'id'>;
   meta: EntityTable<{ key: string; value: unknown }, 'key'>;
+  aicache: EntityTable<AiCacheRow, 'key'>;
 };
 
-db.version(1).stores({
-  records: 'id, kind, dirty, updatedAt',
-  scans: 'id, createdAt, status',
-  meta: 'key',
-});
+export function openDb(name: string): AppDb {
+  const d = new Dexie(name) as AppDb;
+  d.version(1).stores({
+    records: 'id, kind, dirty, updatedAt',
+    scans: 'id, createdAt, status',
+    meta: 'key',
+  });
+  d.version(2).stores({ aicache: 'key, createdAt' });
+  return d;
+}
+
+export const db = openDb('holodilnik');
 
 export const DEFAULT_META: DeviceMeta = {
   onboarded: false,
@@ -21,17 +36,18 @@ export const DEFAULT_META: DeviceMeta = {
   inviteCode: null,
   syncCursor: null,
   lastSyncAt: null,
+  lastBackupAt: null,
 };
 
-export async function getMeta(): Promise<DeviceMeta> {
-  const row = await db.meta.get('device');
+export async function getMeta(store: AppDb = db): Promise<DeviceMeta> {
+  const row = await store.meta.get('device');
   return { ...DEFAULT_META, ...((row?.value as Partial<DeviceMeta>) ?? {}) };
 }
 
-export async function setMeta(patch: Partial<DeviceMeta>): Promise<DeviceMeta> {
-  return db.transaction('rw', db.meta, async () => {
-    const next = { ...(await getMeta()), ...patch };
-    await db.meta.put({ key: 'device', value: next });
+export async function setMeta(patch: Partial<DeviceMeta>, store: AppDb = db): Promise<DeviceMeta> {
+  return store.transaction('rw', store.meta, async () => {
+    const next = { ...(await getMeta(store)), ...patch };
+    await store.meta.put({ key: 'device', value: next });
     return next;
   });
 }

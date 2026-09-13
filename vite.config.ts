@@ -46,7 +46,7 @@ export default defineConfig(({ mode }) => {
   for (const [k, v] of Object.entries(loadEnv(mode, process.cwd(), ''))) process.env[k] ??= v;
 
   return {
-    define: { __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.3.0') },
+    define: { __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.4.0') },
     server: { host: true },
     plugins: [
       react(),
