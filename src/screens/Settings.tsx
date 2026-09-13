@@ -67,6 +67,50 @@ export function Settings() {
           </div>
         </section>
 
+        <section className="stack">
+          <div className="section-label">Приложение</div>
+          <div className="card flat stack">
+            <div className="row-gap">
+              <div className="grow">
+                <b>Версия 0.2.0</b>
+                <div className="small muted">
+                  {standalone ? 'Установлено на экран «Домой»' : 'Запущено в браузере'}
+                </div>
+              </div>
+              <button
+                className="btn small ghost"
+                onClick={async () => {
+                  toast('Проверяю обновления…');
+                  try {
+                    if ('serviceWorker' in navigator) {
+                      const regs = await navigator.serviceWorker.getRegistrations();
+                      for (const reg of regs) {
+                        await reg.update();
+                      }
+                    }
+                    if ('caches' in window) {
+                      const keys = await caches.keys();
+                      for (const k of keys) {
+                        if (k.includes('workbox') || k.includes('precache')) {
+                          await caches.delete(k);
+                        }
+                      }
+                    }
+                    window.location.reload();
+                  } catch {
+                    window.location.reload();
+                  }
+                }}
+              >
+                Обновить
+              </button>
+            </div>
+            <p className="small muted">
+              Приложение обновляется автоматически при открытии. Кнопка «Обновить» принудительно очищает кэш и загружает свежую версию прямо сейчас.
+            </p>
+          </div>
+        </section>
+
         <BackupSection />
 
         <p className="small muted" style={{ textAlign: 'center' }}>
