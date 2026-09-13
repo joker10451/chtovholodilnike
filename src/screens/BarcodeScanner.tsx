@@ -1,26 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { IconCamera } from '../components/icons';
 import { CATEGORY_DOT, Spinner, Stepper, toast } from '../components/ui';
 import { addShoppingItems, saveItems } from '../data/repo';
 import { recognize } from '../lib/ai';
-import {
-  detectBarcode,
-  detectBarcodeFromBlob,
-  isBarcodeSupported,
-  lookupBarcode,
-  type ScannedProduct,
-} from '../lib/barcode';
+import { lookupBarcode, type ScannedProduct } from '../lib/barcode';
 import { makeItem } from '../lib/convert';
-import { toImagePart } from '../lib/image';
+import { shrinkPhoto, toImagePart } from '../lib/image';
 import { todayISO } from '../shared/dates';
 import { getProduct, guessProductKey, LOCATION_LABELS, LOCATIONS, type Location } from '../shared/products';
 import { UNIT_LABELS, type BaseUnit } from '../shared/units';
 
-export function BarcodeScanner() {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+const FORMATS = [
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.UPC_A,
+  Html5QrcodeSupportedFormats.UPC_E,
+  Html5QrcodeSupportedFormats.CODE_128,
+  Html5QrcodeSupportedFormats.CODE_39,
+  Html5QrcodeSupportedFormats.QR_CODE,
+];
 
-  const active = true;
+export function BarcodeScanner() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [manualCode, setManualCode] = useState('');
@@ -34,98 +35,73 @@ export function BarcodeScanner() {
   const [location, setLocation] = useState<Location>('fridge');
   const [date, setDate] = useState<string>('');
 
-  const supported = isBarcodeSupported();
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const isHandlingRef = useRef(false);
 
-  // Запуск камеры
+  // Запуск камеры со сканером Html5Qrcode
   useEffect(() => {
-    if (!active || product) return;
+    if (product) return;
 
-    let stopped = false;
-    async function startCam() {
+    let mounted = true;
+    const elementId = 'barcode-reader-box';
+
+    // Даём DOM обновиться
+    const timer = setTimeout(() => {
+      if (!mounted) return;
+      const el = document.getElementById(elementId);
+      if (!el) return;
+
       try {
-        setCameraError(null);
-        if (!navigator.mediaDevices?.getUserMedia) {
-          setCameraError('Камера недоступна в этом браузере');
-          return;
-        }
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: 'environment' },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-          audio: false,
+        const qr = new Html5Qrcode(elementId, {
+          formatsToSupport: FORMATS,
+          verbose: false,
         });
+        scannerRef.current = qr;
+        isHandlingRef.current = false;
 
-        if (stopped) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.setAttribute('playsinline', 'true');
-          videoRef.current.muted = true;
-          try {
-            await videoRef.current.play();
-          } catch {
-            // Safari autoplay policy
+        qr.start(
+          { facingMode: 'environment' },
+          {
+            fps: 15,
+            qrbox: (w) => {
+              const width = Math.min(w * 0.88, 300);
+              const height = Math.min(width * 0.65, 180);
+              return { width: Math.round(width), height: Math.round(height) };
+            },
+            aspectRatio: 1.0,
+          },
+          (decodedText) => {
+            if (isHandlingRef.current) return;
+            isHandlingRef.current = true;
+            void handleBarcodeFound(decodedText);
+          },
+          () => {
+            // Кадр без штрихкода (штатный пропуск)
           }
-        }
+        ).catch((err) => {
+          if (!mounted) return;
+          console.warn('Camera start error:', err);
+          setCameraError('Камера недоступна или доступ заблокирован. Разрешите камеру в настройках Safari или введите цифры вручную.');
+        });
       } catch (err) {
-        if (!stopped) {
-          setCameraError('Доступ к камере заблокирован. Разрешите камеру в настройках Safari или введите штрихкод вручную.');
-        }
+        if (!mounted) return;
+        setCameraError('Ошибка инициализации сканера');
       }
-    }
-
-    void startCam();
+    }, 100);
 
     return () => {
-      stopped = true;
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
+      mounted = false;
+      clearTimeout(timer);
+      if (scannerRef.current) {
+        try {
+          if (scannerRef.current.isScanning) {
+            scannerRef.current.stop().catch(() => {});
+          }
+        } catch {}
+        scannerRef.current = null;
       }
     };
-  }, [active, product]);
-
-  // Непрерывное сканирование кадров
-  useEffect(() => {
-    if (!active || product || !supported) return;
-
-    let animId: number;
-    let isDetecting = false;
-    let lastScan = 0;
-
-    async function tick(now: number) {
-      if (
-        videoRef.current &&
-        videoRef.current.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
-        !isDetecting &&
-        now - lastScan > 200
-      ) {
-        lastScan = now;
-        isDetecting = true;
-        try {
-          const code = await detectBarcode(videoRef.current);
-          if (code) {
-            handleBarcodeFound(code);
-            return; // прекращаем тик
-          }
-        } finally {
-          isDetecting = false;
-        }
-      }
-      animId = requestAnimationFrame(tick);
-    }
-
-    animId = requestAnimationFrame(tick);
-
-    return () => cancelAnimationFrame(animId);
-  }, [active, product, supported]);
+  }, [product]);
 
   async function handleBarcodeFound(code: string) {
     if ('vibrate' in navigator) {
@@ -134,6 +110,14 @@ export function BarcodeScanner() {
       } catch {}
     }
     setBusy(true);
+
+    // Останавливаем сканер пока показываем карточку
+    if (scannerRef.current?.isScanning) {
+      try {
+        await scannerRef.current.stop();
+      } catch {}
+    }
+
     try {
       const p = await lookupBarcode(code, todayISO());
       if (p) {
@@ -171,17 +155,30 @@ export function BarcodeScanner() {
   // Сканирование по загруженному фото
   async function handlePhotoFile(file: File) {
     setBusy(true);
+    const tempId = 'barcode-file-temp';
     try {
-      // 1. Сначала пробуем распознать штрихкод (ZXing)
-      const code = await detectBarcodeFromBlob(file);
-      if (code) {
-        await handleBarcodeFound(code);
+      // 1. Сначала пробуем распознать штрихкод из файла через Html5Qrcode
+      let decodedText: string | null = null;
+      try {
+        const fileScanner = new Html5Qrcode(tempId, {
+          formatsToSupport: FORMATS,
+          verbose: false,
+        });
+        decodedText = await fileScanner.scanFile(file, true);
+        fileScanner.clear();
+      } catch {
+        // не нашёл штрихкод
+      }
+
+      if (decodedText) {
+        await handleBarcodeFound(decodedText);
         return;
       }
 
       // 2. Если полосы штрихкода не распознались, запускаем нейросеть по фото упаковки
       try {
-        const imagePart = await toImagePart(file);
+        const shrunk = await shrinkPhoto(file);
+        const imagePart = await toImagePart(shrunk);
         const res = await recognize({ task: 'shelf', today: todayISO(), images: [imagePart] });
         if (res.items && res.items.length > 0) {
           const first = res.items[0];
@@ -206,8 +203,11 @@ export function BarcodeScanner() {
           toast(`Распознан: ${first.name}`);
           return;
         }
-      } catch {
-        // Fallback
+      } catch (err: unknown) {
+        if (err instanceof Error && err.message) {
+          toast(err.message);
+          return;
+        }
       }
 
       toast('Не удалось распознать штрихкод. Поднесите ближе или введите вручную.');
@@ -264,6 +264,8 @@ export function BarcodeScanner() {
 
   return (
     <div className="stack" style={{ gap: 14 }}>
+      <div id="barcode-file-temp" style={{ display: 'none' }} />
+
       {busy && (
         <div className="card flat row-gap" style={{ justifyContent: 'center', padding: 14 }}>
           <Spinner /> <span>Ищу товар в базе продуктов…</span>
@@ -279,18 +281,13 @@ export function BarcodeScanner() {
                 {cameraError}
               </div>
             ) : (
-              <>
-                <video ref={videoRef} className="barcode-video" autoPlay playsInline muted />
-                <div className="barcode-reticle">
-                  <div className="barcode-laser" />
-                </div>
-              </>
+              <div id="barcode-reader-box" style={{ width: '100%', height: '100%' }} />
             )}
           </div>
 
           <div style={{ textAlign: 'center' }}>
             <p className="small muted" style={{ margin: 0 }}>
-              Наведите штрихкод на рамку. Камера считает его за доли секунды.
+              Наведите полосы штрихкода в прямоугольник. Сканирование сработает мгновенно.
             </p>
           </div>
 

@@ -228,6 +228,21 @@ button.chip.on { background: var(--brand-soft); border-color: var(--brand); colo
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
+#barcode-reader-box {
+  width: 100% !important; height: 100% !important; border: none !important;
+  display: flex !important; align-items: center !important; justify-content: center !important;
+  position: relative !important;
+}
+#barcode-reader-box video {
+  width: 100% !important; height: 100% !important; object-fit: cover !important;
+  border-radius: 18px !important; display: block !important;
+}
+#barcode-reader-box canvas {
+  display: none !important;
+}
+#barcode-reader-box #qr-shaded-region {
+  border-color: rgba(0, 0, 0, 0.45) !important;
+}
 .barcode-video {
   width: 100%; height: 100%; object-fit: cover;
 }
