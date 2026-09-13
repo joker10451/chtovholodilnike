@@ -167,3 +167,24 @@ $$;
 alter table public.records drop constraint if exists records_kind_check;
 alter table public.records add constraint records_kind_check
   check (kind in ('item', 'recipe', 'settings', 'cooklog', 'shopping', 'plan', 'barcode'));
+
+-- Уведомления о сроках: подписки телефонов на push.
+-- Рассылает серверная функция api/cron/expiry по расписанию из vercel.json.
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  time_zone text not null default 'Europe/Moscow',
+  last_sent_on date,
+  created_at timestamptz not null default now()
+);
+
+alter table public.push_subscriptions enable row level security;
+
+drop policy if exists "own push subscriptions" on public.push_subscriptions;
+create policy "own push subscriptions" on public.push_subscriptions
+  for all using (user_id = auth.uid())
+  with check (user_id = auth.uid() and public.is_household_member(household_id));

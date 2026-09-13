@@ -5,11 +5,13 @@ import { useAllRecipes } from '../data/repo';
 import { useMatchContext } from '../hooks';
 import { onShelf, rankRecipes, type RecipeMatch, type Shelf } from '../lib/matching';
 import { go, href, useRoute } from '../router';
+import { isFavorite, tasteOf } from '../lib/taste';
 import { getProduct, normalizeName } from '../shared/products';
 import { plural } from './Fridge';
 
 const TAG_CHIPS = [
   { id: 'all', label: 'Все' },
+  { id: 'favorite', label: 'Любимые' },
   { id: 'завтрак', label: 'Завтраки' },
   { id: 'ужин', label: 'Обед и ужин' },
   { id: 'напиток', label: 'Смузи и напитки' },
@@ -54,6 +56,7 @@ export function Recipes() {
     if (!onShelf(m, shelf, hasItems)) return false;
     if (tag === 'all') return true;
     if (tag === 'quick') return m.recipe.time <= 25;
+    if (tag === 'favorite') return isFavorite(tasteOf(ctx?.tastes, m.recipe.id));
     return m.recipe.tags.includes(tag);
   });
 
@@ -155,7 +158,7 @@ export function Recipes() {
       </div>
 
       <div className="stack" style={{ marginTop: 4 }}>
-        {visible.map((m) => <RecipeCard key={m.recipe.id} match={m} hasItems={hasItems} />)}
+        {visible.map((m) => <RecipeCard key={m.recipe.id} match={m} hasItems={hasItems} favorite={isFavorite(tasteOf(ctx?.tastes, m.recipe.id))} />)}
         {ctx && visible.length === 0 && (
           <Empty
             title={
@@ -168,7 +171,9 @@ export function Recipes() {
                     : 'Пока пусто'
             }
           >
-            {q
+            {tag === 'favorite' && !q
+              ? 'Оцените блюдо после готовки — оценка «Вкусно» добавит его сюда.'
+              : q
               ? 'Попробуйте другое название или найдите рецепт в каталоге.'
               : !hasItems && shelf !== 'all'
                 ? 'Добавьте продукты в холодильник — и подходящие блюда появятся на этой полке.'
@@ -188,7 +193,7 @@ export function Recipes() {
   );
 }
 
-function RecipeCard({ match: m, hasItems }: { match: RecipeMatch; hasItems: boolean }) {
+function RecipeCard({ match: m, hasItems, favorite }: { match: RecipeMatch; hasItems: boolean; favorite: boolean }) {
   const r = m.recipe;
   return (
     <a className="recipe-card" href={href('recipe', r.id)}>
@@ -201,6 +206,7 @@ function RecipeCard({ match: m, hasItems }: { match: RecipeMatch; hasItems: bool
           {r.source === 'ai' && <span>мой рецепт</span>}
         </span>
         <span className="wrap-gap">
+          {favorite && <span className="stk fresh">любимое</span>}
           {m.rescueItemIds.length > 0 && <span className="stk soon">спасает {m.rescueItemIds.length}</span>}
           {!hasItems ? (
             r.tags.slice(0, 2).map((t) => <span key={t} className="stk plain">{t}</span>)

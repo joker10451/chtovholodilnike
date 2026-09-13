@@ -33,13 +33,21 @@ export interface HouseholdSettings {
   servings: number;
   staples: string[];
   timeLimit: number;
+  /** Какие приёмы пищи планировать и в какие дни готовить впрок */
+  plan?: { meals: MealSlot[]; cookDays: number[] };
 }
 
 export interface CookLogEntry {
+  /** Совпадает с id записи; у старых записей может отсутствовать */
+  id?: string;
   recipeId: string;
   title: string;
   portions: number;
   cookedAt: number;
+  /** Оценка семьи: 1 — не понравилось, 3 — нормально, 5 — очень вкусно */
+  rating?: 1 | 3 | 5;
+  /** Блюдо оценили, не готовя по приложению */
+  ratedOnly?: boolean;
 }
 
 export interface ShoppingItem {

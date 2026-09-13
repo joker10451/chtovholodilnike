@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { IconBack, IconCart, IconLock, IconSpark, IconSwap, IconUnlock } from '../components/icons';
+import { IconBack, IconCart, IconLock, IconMore, IconSpark, IconSwap, IconUnlock } from '../components/icons';
 import { Empty, Header, Plate, Sheet, toast, useToday } from '../components/ui';
-import { saveFullMealPlan, savePlannedMeal, useAllRecipes, useMealPlan, useSettings } from '../data/repo';
+import { deleteRecords, saveFullMealPlan, saveSettings, savePlannedMeal, useAllRecipes, useMealPlan, useSettings } from '../data/repo';
 import type { MealSlot, PlannedMeal } from '../data/types';
 import { useMatchContext } from '../hooks';
-import { addWeekPlanToShopping, generateWeekPlan } from '../lib/planGenerator';
+import { addWeekPlanToShopping, DEFAULT_PLAN_OPTIONS, generateWeekPlan, leftoverLabel, type PlanOptions } from '../lib/planGenerator';
+import { isFavorite, tasteOf } from '../lib/taste';
 import { go, href } from '../router';
 import { addDays, formatWeekRange, getDayDisplay, getMonday, getWeekDays, shortDate } from '../shared/dates';
 import type { Recipe } from '../shared/recipeTypes';
@@ -19,9 +20,12 @@ export function Plan() {
   const ctx = useMatchContext();
   const recipes = useAllRecipes();
 
-  const [monday, setMonday] = useState(() => getMonday(today));
-  const [activeDate, setActiveDate] = useState(today);
+  // В воскресенье планируем уже следующую неделю
+  const [monday, setMonday] = useState(() => (getWeekDays(getMonday(today))[6] === today ? addDays(getMonday(today), 7) : getMonday(today)));
+  const [activeDate, setActiveDate] = useState(() => (getWeekDays(getMonday(today))[6] === today ? addDays(getMonday(today), 7) : today));
   const [swapSlot, setSwapSlot] = useState<PlannedMeal | null>(null);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const options: PlanOptions = settings.plan ?? DEFAULT_PLAN_OPTIONS;
 
   const weekDays = useMemo(() => getWeekDays(monday), [monday]);
   const planned = useMealPlan(monday);
@@ -42,7 +46,12 @@ export function Plan() {
 
   async function generate() {
     if (!ctx) return;
-    await saveFullMealPlan(generateWeekPlan({ mondayIso: monday, ctx, recipes, existingMeals: planned ?? [], servings: settings.servings }));
+    const next = generateWeekPlan({ mondayIso: monday, ctx, recipes, existingMeals: planned ?? [], servings: settings.servings, options });
+    // Приёмы пищи, которые больше не планируются, убираем
+    const keep = new Set(next.map((m) => m.id));
+    const stale = (planned ?? []).filter((m) => !keep.has(m.id) && !m.locked).map((m) => m.id);
+    if (stale.length) await deleteRecords(stale);
+    await saveFullMealPlan(next);
     toast(hasPlan ? 'Рацион пересобран, закреплённые блюда остались' : 'Рацион на неделю готов');
   }
 
@@ -64,12 +73,13 @@ export function Plan() {
     <main className="screen">
       <Header
         title="Рацион"
-        sub={`На ${settings.servings} ${plural(settings.servings, 'человека', 'человек', 'человек')} · завтрак, обед и ужин`}
-        right={hasPlan && (
-          <button className="icon-btn" onClick={generate} aria-label="Пересобрать рацион">
-            <IconSpark />
-          </button>
-        )}
+        sub={`На ${settings.servings} ${plural(settings.servings, 'человека', 'человек', 'человек')} · ${options.meals.map((m) => SLOT_TITLES[m].toLowerCase()).join(', ')}`}
+        right={
+          <div className="row-gap" style={{ gap: 6 }}>
+            {hasPlan && <button className="icon-btn" onClick={generate} aria-label="Пересобрать рацион"><IconSpark /></button>}
+            <button className="icon-btn" onClick={() => setOptionsOpen(true)} aria-label="Настройки рациона"><IconMore /></button>
+          </div>
+        }
       />
 
       <div className="stack-lg">
@@ -109,7 +119,9 @@ export function Plan() {
         )}
 
         {hasPlan && dayMeals.length === 0 && (
-          <Empty title="На этот день блюд нет" action={<button className="btn ghost" onClick={generate}>Заполнить пустые дни</button>} />
+          activeDate < today
+            ? <Empty title="Этот день уже прошёл" />
+            : <Empty title="На этот день блюд нет" action={<button className="btn ghost" onClick={generate}>Заполнить пустые дни</button>} />
         )}
 
         {dayMeals.length > 0 && (
@@ -147,9 +159,11 @@ export function Plan() {
                     <span className="grow stack" style={{ gap: 5 }}>
                       <b>{meal.title}</b>
                       <span className="wrap-gap">
-                        {meal.isLeftover && <span className="stk brand">остатки ужина{meal.leftoverFromDate ? ` ${shortDate(meal.leftoverFromDate)}` : ''}</span>}
+                        {meal.isLeftover && <span className="stk brand">{leftoverLabel(meal)}</span>}
+                        {meal.note && <span className="stk soon">{meal.note}</span>}
+                        {!meal.isLeftover && meal.servings > settings.servings && <span className="stk plain">{meal.servings} порц. — на завтра</span>}
+                        {recipe && isFavorite(tasteOf(ctx?.tastes, recipe.id)) && <span className="stk fresh">любимое</span>}
                         {meal.locked && <span className="stk plain">закреплено</span>}
-                        {!meal.isLeftover && recipe && recipe.servings > settings.servings && <span className="stk plain">{recipe.servings} порц. — впрок</span>}
                       </span>
                     </span>
                   </a>
@@ -166,6 +180,13 @@ export function Plan() {
           </div>
         )}
       </div>
+
+      <PlanOptionsSheet
+        open={optionsOpen}
+        onClose={() => setOptionsOpen(false)}
+        options={options}
+        onChange={(plan) => saveSettings({ plan })}
+      />
 
       <SwapRecipeSheet
         open={Boolean(swapSlot)}
@@ -208,6 +229,47 @@ function SwapRecipeSheet({ open, onClose, recipes, slot, onSelect }: {
           ))}
           {filtered.length === 0 && <p className="small muted" style={{ padding: 14 }}>Ничего не нашлось</p>}
         </div>
+      </div>
+    </Sheet>
+  );
+}
+
+const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+
+function PlanOptionsSheet({ open, onClose, options, onChange }: {
+  open: boolean; onClose: () => void; options: PlanOptions; onChange: (o: PlanOptions) => void;
+}) {
+  const toggleMeal = (slot: MealSlot) => {
+    const meals = options.meals.includes(slot) ? options.meals.filter((m) => m !== slot) : [...options.meals, slot];
+    if (meals.length) onChange({ ...options, meals });
+  };
+  const toggleDay = (d: number) => {
+    const cookDays = options.cookDays.includes(d) ? options.cookDays.filter((x) => x !== d) : [...options.cookDays, d].sort();
+    onChange({ ...options, cookDays });
+  };
+  return (
+    <Sheet open={open} onClose={onClose} title="Настройки рациона" footer={<button className="btn block" onClick={onClose}>Готово</button>}>
+      <div className="stack-lg">
+        <div className="stack">
+          <b>Что планировать</b>
+          <div className="wrap-gap">
+            {(['breakfast', 'lunch', 'dinner'] as MealSlot[]).map((s) => (
+              <button key={s} type="button" className={`chip${options.meals.includes(s) ? ' on' : ''}`} aria-pressed={options.meals.includes(s)} onClick={() => toggleMeal(s)}>
+                {SLOT_TITLES[s]}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="stack">
+          <b>Дни, когда готовите впрок</b>
+          <span className="small muted">В эти дни ужин готовится на две трапезы — на следующий день обед уже есть. В остальные дни — быстрые блюда.</span>
+          <div className="week-picker">
+            {WEEKDAYS.map((d, i) => (
+              <button key={d} type="button" className={`chip${options.cookDays.includes(i) ? ' on' : ''}`} aria-pressed={options.cookDays.includes(i)} onClick={() => toggleDay(i)}>{d}</button>
+            ))}
+          </div>
+        </div>
+        <p className="small muted">После изменения нажмите «Пересобрать рацион» — закреплённые блюда останутся.</p>
       </div>
     </Sheet>
   );

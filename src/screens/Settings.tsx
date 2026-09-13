@@ -14,6 +14,7 @@ import { syncConfigured } from '../lib/supabase';
 import { todayISO } from '../shared/dates';
 import { PRODUCTS } from '../shared/products';
 import { plural } from './Fridge';
+import { NotificationsSection } from './NotificationsSection';
 
 export function Settings() {
   const settings = useSettings();
@@ -93,6 +94,8 @@ export function Settings() {
         </section>
 
         <SyncSection />
+
+        <NotificationsSection />
 
         <section className="stack">
           <div className="section-label">Нейросеть</div>

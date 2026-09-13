@@ -11,6 +11,7 @@ import {
 } from '../data/repo';
 import type { ShoppingItem } from '../data/types';
 import { parseProductsText } from '../lib/parseText';
+import { packHint } from '../lib/shoppingMath';
 import { href } from '../router';
 import type { Category } from '../shared/products';
 import { formatQty } from '../shared/units';
@@ -159,7 +160,9 @@ function ShoppingRow({ item }: { item: ShoppingItem }) {
       <span className="dot"><i style={{ background: CATEGORY_DOT[item.category] }} /></span>
       <span className="nm">
         <b>{item.name}</b>
-        {item.recipeTitle && <small>для: {item.recipeTitle}</small>}
+        {(item.recipeTitle || packHint(item.productKey, item.qty, item.unit)) && (
+          <small>{[packHint(item.productKey, item.qty, item.unit), item.recipeTitle && `для: ${item.recipeTitle}`].filter(Boolean).join(' · ')}</small>
+        )}
       </span>
       <span className="qty num">{formatQty(item.qty, item.unit)}</span>
       <button type="button" className="row-remove" onClick={() => deleteShoppingItem(item.id)} aria-label={`Удалить ${item.name}`}>

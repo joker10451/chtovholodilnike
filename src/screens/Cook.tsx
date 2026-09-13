@@ -1,4 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
+import { RatingPicker } from '../components/RatingPicker';
+import type { Rating } from '../lib/taste';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Header, Sheet, Stepper, toast } from '../components/ui';
 import { newId } from '../data/db';
@@ -129,6 +131,7 @@ function FinishSheet({ open, onClose, recipeId, portions }: { open: boolean; onC
   const lines = useMemo(() => (ctx && recipe && open ? planDeduction(ctx, recipe, portions) : []), [ctx, recipe, portions, open]);
   const [skip, setSkip] = useState<Set<string>>(new Set());
   const [leftovers, setLeftovers] = useState(0);
+  const [rating, setRating] = useState<Rating | null>(null);
   const [saving, setSaving] = useState(false);
   // Кнопка «Списать» оказывается там же, где «Готово» — защищаемся от случайного двойного касания
   const [armed, setArmed] = useState(false);
@@ -163,7 +166,7 @@ function FinishSheet({ open, onClose, recipeId, portions }: { open: boolean; onC
     }
     await saveItems(toSave);
     if (toDelete.length) await deleteRecords(toDelete);
-    await logCooking({ recipeId: recipe.id, title: recipe.title, portions, cookedAt: Date.now() });
+    await logCooking({ recipeId: recipe.id, title: recipe.title, portions, cookedAt: Date.now(), ...(rating ? { rating } : {}) });
     toast('Приятного аппетита! Холодильник обновлён');
     go(href('fridge'), true);
   }
@@ -199,6 +202,12 @@ function FinishSheet({ open, onClose, recipeId, portions }: { open: boolean; onC
             <div className="small muted">Положим в холодильник на 3 дня</div>
           </div>
           <div style={{ width: 140 }}><Stepper label="Порций осталось" value={leftovers} onChange={(v) => setLeftovers(Math.max(0, Math.round(v)))} /></div>
+        </div>
+
+        <div className="card flat stack">
+          <b>Как вам блюдо?</b>
+          <RatingPicker value={rating} onChange={setRating} />
+          <span className="small muted">Любимые блюда чаще попадут в подборку и рацион, нелюбимые — пропадут</span>
         </div>
 
         <button className="btn block" disabled={saving || !armed} onClick={apply}>Списать и закончить</button>

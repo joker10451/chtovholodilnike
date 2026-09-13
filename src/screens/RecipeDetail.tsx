@@ -2,12 +2,15 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { useMemo, useState } from 'react';
 import { IconTimer } from '../components/icons';
 import { Header, Plate, Stepper, toast } from '../components/ui';
-import { addShoppingItems, deleteRecords, getRecipe } from '../data/repo';
+import { RatingPicker } from '../components/RatingPicker';
+import { addShoppingItems, deleteRecords, getRecipe, rateRecipe } from '../data/repo';
+import { purchaseAmount } from '../lib/shoppingMath';
+import { RATING_LABELS, tasteOf } from '../lib/taste';
 import { useMatchContext } from '../hooks';
 import { matchRecipe, type IngredientMatch } from '../lib/matching';
 import { back, go, href } from '../router';
 import { getProduct } from '../shared/products';
-import { formatQty, type ItemUnit } from '../shared/units';
+import { formatQty } from '../shared/units';
 import { plural } from './Fridge';
 
 const MARK: Record<IngredientMatch['state'], string> = { have: '✓', sub: '⇄', staple: '✓', partial: '½', missing: '×' };
@@ -28,6 +31,7 @@ export function RecipeDetail({ id }: { id: string }) {
   if (recipe === null) return <main className="screen no-tabs"><Header title="Рецепт не найден" backTo="#/recipes" /></main>;
 
   const factor = p / recipe.servings;
+  const taste = tasteOf(ctx?.tastes, recipe.id);
   const missing = match?.missing ?? [];
 
   async function shareMissing() {
@@ -46,12 +50,13 @@ export function RecipeDetail({ id }: { id: string }) {
     await addShoppingItems(
       missing.map((m) => {
         const prod = getProduct(m.ingredient.key);
+        const buy = purchaseAmount(m.ingredient.key, m.ingredient.qty * factor, m.ingredient.unit);
         return {
           name: ingredientTitle(m),
           productKey: m.ingredient.key,
           category: prod?.category,
-          qty: m.ingredient.qty ? Math.ceil(m.ingredient.qty * factor) : 1,
-          unit: (m.ingredient.unit === 'pinch' ? 'pcs' : m.ingredient.unit) as ItemUnit,
+          qty: buy.qty,
+          unit: buy.unit,
           recipeTitle: recipe!.title,
         };
       }),
@@ -112,11 +117,11 @@ export function RecipeDetail({ id }: { id: string }) {
             ))}
           </div>
           {missing.length > 0 && (
-            <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+            <div className="stack" style={{ gap: 4 }}>
               <button className="btn ghost block" onClick={addToShopping}>
-                + В список покупок ({missing.length})
+                В список покупок: {missing.length}
               </button>
-              <button className="btn plain block small" onClick={shareMissing}>
+              <button className="btn quiet block small" onClick={shareMissing}>
                 Поделиться списком
               </button>
             </div>
@@ -135,6 +140,17 @@ export function RecipeDetail({ id }: { id: string }) {
               </li>
             ))}
           </ol>
+        </div>
+
+        <div className="card flat stack">
+          <div>
+            <b>Оценка семьи</b>
+            <div className="small muted">
+              {taste.cooked > 0 ? `Готовили ${taste.cooked} ${plural(taste.cooked, 'раз', 'раза', 'раз')}` : 'Ещё не готовили по приложению'}
+              {taste.last ? ` · последняя оценка: ${RATING_LABELS[taste.last].toLowerCase()}` : ''}
+            </div>
+          </div>
+          <RatingPicker value={taste.last} onChange={async (r) => { await rateRecipe(recipe.id, recipe.title, r); toast(r === 1 ? 'Больше не будем предлагать в рацион' : r === 5 ? 'Добавлено в любимые' : 'Оценка сохранена'); }} />
         </div>
 
         {recipe.origin && <p className="small muted">Источник: {recipe.origin}</p>}

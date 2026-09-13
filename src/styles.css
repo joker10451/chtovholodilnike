@@ -584,3 +584,21 @@ button.chip.on { background: var(--brand-soft); border-color: var(--brand); colo
   background: var(--ink); color: var(--ground); font-size: 12.5px; font-weight: 600; text-align: center; text-wrap: balance;
 }
 .offline-bar + .screen { padding-top: calc(var(--safe-top) + 42px); }
+
+/* ——— Оценка блюда ——— */
+.rating { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.rating-opt {
+  display: grid; justify-items: center; gap: 4px; padding: 10px 4px; border-radius: 14px; font-size: 12.5px; font-weight: 600;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-2);
+}
+.rating-face { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font: 700 17px var(--mono); background: var(--surface-2); color: var(--ink-3); }
+.rating-opt.on { border-color: currentColor; }
+.rating-opt.r1.on { color: var(--bad); background: var(--bad-soft); }
+.rating-opt.r3.on { color: var(--ink); background: var(--surface-2); }
+.rating-opt.r5.on { color: var(--fresh); background: var(--fresh-soft); }
+.rating-opt.r1.on .rating-face { background: var(--bad); color: var(--surface); }
+.rating-opt.r3.on .rating-face { background: var(--ink); color: var(--surface); }
+.rating-opt.r5.on .rating-face { background: var(--fresh); color: var(--surface); }
+
+.week-picker { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.week-picker .chip { justify-content: center; padding: 8px 0; }

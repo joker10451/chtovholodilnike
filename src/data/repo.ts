@@ -99,7 +99,18 @@ export function saveRecipe(recipe: Recipe): Promise<void> {
 // ——— Журнал готовки ———
 
 export function logCooking(entry: CookLogEntry): Promise<void> {
-  return putRecord('cooklog', newId(), entry);
+  const id = newId();
+  return putRecord('cooklog', id, { ...entry, id });
+}
+
+/** Ставит оценку последнему приготовлению блюда; если по приложению не готовили — сохраняет отдельную оценку */
+export async function rateRecipe(recipeId: string, title: string, rating: 1 | 3 | 5): Promise<void> {
+  const rows = (await db.records.where('kind').equals('cooklog').toArray()) as SyncRecord<CookLogEntry>[];
+  const latest = rows
+    .filter((r) => !r.deleted && r.data.recipeId === recipeId)
+    .sort((a, b) => b.data.cookedAt - a.data.cookedAt)[0];
+  if (latest) await putRecord('cooklog', latest.id, { ...latest.data, id: latest.id, rating });
+  else await logCooking({ recipeId, title, portions: 0, cookedAt: Date.now(), rating, ratedOnly: true });
 }
 
 export function useCookLog(): CookLogEntry[] | undefined {

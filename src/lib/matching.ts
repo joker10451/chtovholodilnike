@@ -1,4 +1,5 @@
 import type { InventoryItem } from '../data/types';
+import { isDisliked, tasteOf, type RecipeTaste } from './taste';
 import { daysLeft, freshness, RESCUE_DAYS } from '../shared/freshness';
 import type { Ingredient, Recipe, Role, Substitute } from '../shared/recipeTypes';
 import { convert, type RecipeUnit } from '../shared/units';
@@ -6,6 +7,8 @@ import { convert, type RecipeUnit } from '../shared/units';
 export const ROLE_WEIGHT: Record<Role, number> = { key: 3, secondary: 1, basic: 0 };
 
 export interface MatchContext {
+  /** Оценки семьи по рецептам (id → вкус); без них вкус нейтральный */
+  tastes?: ReadonlyMap<string, RecipeTaste>;
   items: InventoryItem[];
   staples: ReadonlySet<string>;
   today: string;
@@ -118,9 +121,11 @@ export function matchRecipe(ctx: MatchContext, recipe: Recipe, portions = recipe
   const rescueItemIds = [...new Set(ingredients.flatMap((m) => m.itemIds).filter((id) => expiring.has(id)))];
   const rescue = expiring.size ? Math.min(1, rescueItemIds.length / Math.min(expiring.size, 2)) : 0;
   const time = recipe.time <= ctx.timeLimit ? 1 : Math.max(0, 1 - (recipe.time - ctx.timeLimit) / ctx.timeLimit);
-  const taste = 0.5;
+  const taste = tasteOf(ctx.tastes, recipe.id).score;
 
-  const score = 0.45 * coverage + 0.25 * rescue + 0.15 * taste + 0.15 * time - 0.1 * missing.length;
+  // Нелюбимые блюда опускаем в самый низ подборки
+  const disliked = isDisliked(tasteOf(ctx.tastes, recipe.id)) ? 1 : 0;
+  const score = 0.45 * coverage + 0.25 * rescue + 0.15 * taste + 0.15 * time - 0.1 * missing.length - 0.5 * disliked;
   return { recipe, score, coverage, ingredients, missing, missingKey, rescueItemIds };
 }
 
