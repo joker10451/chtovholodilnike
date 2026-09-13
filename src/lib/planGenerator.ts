@@ -4,7 +4,8 @@ import { getWeekDays } from '../shared/dates';
 import { expiringItemIds, type MatchContext } from './matching';
 import { getProduct } from '../shared/products';
 import type { Recipe } from '../shared/recipeTypes';
-import type { ItemUnit } from '../shared/units';
+import { convert, toBase, type ItemUnit } from '../shared/units';
+import { todayISO } from '../shared/dates';
 
 export function generateWeekPlan({
   mondayIso,
@@ -170,8 +171,10 @@ export async function addWeekPlanToShopping({
 
       const key = ing.key ?? ing.name ?? '';
       const prod = getProduct(ing.key);
-      const unit = (ing.unit === 'pinch' ? 'pcs' : ing.unit) as ItemUnit;
-      const amount = (ing.qty ?? 1) * factor;
+      // Ложки переводим в граммы/мл, чтобы складывать одно и то же количество из разных рецептов
+      const base = toBase((ing.qty ?? 0) * factor, ing.unit, ing.key);
+      const unit: ItemUnit = base.unit;
+      if (base.qty <= 0) continue;
 
       const curr = needed.get(key) ?? {
         name: ing.name ?? prod?.name ?? key,
@@ -180,7 +183,7 @@ export async function addWeekPlanToShopping({
         unit,
         recipes: new Set(),
       };
-      curr.qty += amount;
+      curr.qty += convert(base.qty, unit, curr.unit, ing.key) ?? base.qty;
       curr.recipes.add(r.title);
       needed.set(key, curr);
     }
@@ -196,10 +199,13 @@ export async function addWeekPlanToShopping({
     recipeTitle?: string;
   }> = [];
 
+  const today = todayISO();
   for (const [, req] of needed) {
+    // Просроченное не считаем, количества переводим в единицы рецепта
     const onHand = inventoryItems
       .filter((it) => (req.productKey ? it.productKey === req.productKey : it.name.toLowerCase() === req.name.toLowerCase()))
-      .reduce((sum, it) => sum + it.qty, 0);
+      .filter((it) => !it.expiresAt || it.expiresAt >= today)
+      .reduce((sum, it) => sum + (convert(it.qty, it.unit, req.unit, req.productKey) ?? 0), 0);
 
     const diff = req.qty - onHand;
     if (diff > 0) {

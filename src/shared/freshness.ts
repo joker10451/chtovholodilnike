@@ -47,8 +47,6 @@ export function shelfLifeDays(productKey: string | null, category: Category, loc
 /**
  * Срок = min(дата с упаковки или покупка + норма, вскрытие + норма после вскрытия).
  * В морозилке считаем от даты покупки по норме заморозки.
- * Если дата на упаковке в прошлом относительно покупки (packageDate < purchasedAt),
- * значит на пачке была дата изготовления — прибавляем срок годности к ней.
  */
 export function estimateExpiry(input: ExpiryInput): { expiresAt: string | null; isEstimate: boolean } {
   const { productKey, category, location, purchasedAt, openedAt, packageDate } = input;
@@ -64,16 +62,11 @@ export function estimateExpiry(input: ExpiryInput): { expiresAt: string | null; 
   }
 
   if (packageDate) {
-    if (packageDate < purchasedAt) {
-      // Дата в прошлом — это дата производства/изготовления продукта
-      const days = shelfLifeDays(productKey, category, location);
-      expiresAt = days === null ? addDays(purchasedAt, 7) : addDays(packageDate, days);
-      isEstimate = true;
-    } else {
-      // Дата в будущем или сегодня — это реальная дата окончания срока ("Годен до")
-      expiresAt = packageDate;
-      isEstimate = false;
-    }
+    // Дату «годен до» не пересчитываем, даже если она уже прошла: просроченный продукт
+    // должен показываться просроченным. Дату изготовления разбирают раньше —
+    // нейросеть возвращает её отдельно, и packageExpiry() прибавляет к ней срок годности.
+    expiresAt = packageDate;
+    isEstimate = false;
   } else {
     const days = shelfLifeDays(productKey, category, location);
     expiresAt = days === null ? null : addDays(purchasedAt, days);

@@ -74,6 +74,8 @@ export async function generateWithGemini<T extends z.ZodType>(opts: {
       if (error instanceof ApiError && (error.status === 503 || error.status === 500 || error.status === 404)) {
         continue;
       }
+      // Неверный запрос или ключ не исправит другая модель — не тратим время функции на повторы
+      break;
     }
   }
 

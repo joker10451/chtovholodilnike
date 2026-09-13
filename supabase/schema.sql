@@ -20,7 +20,7 @@ create table if not exists public.household_members (
 create table if not exists public.records (
   household_id uuid not null references public.households(id) on delete cascade,
   id text not null,
-  kind text not null check (kind in ('item', 'recipe', 'settings', 'cooklog')),
+  kind text not null check (kind in ('item', 'recipe', 'settings', 'cooklog', 'shopping', 'plan', 'barcode')),
   data jsonb not null,
   updated_at bigint not null,
   deleted boolean not null default false,
@@ -161,3 +161,9 @@ begin
 exception when duplicate_object then null;
 end;
 $$;
+
+-- Обновление для базы, созданной раньше: разрешаем покупки, рацион и семейную базу штрихкодов.
+-- Без этого синхронизация останавливается на первой записи нового типа.
+alter table public.records drop constraint if exists records_kind_check;
+alter table public.records add constraint records_kind_check
+  check (kind in ('item', 'recipe', 'settings', 'cooklog', 'shopping', 'plan', 'barcode'));
