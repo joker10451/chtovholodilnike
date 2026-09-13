@@ -1,0 +1,1008 @@
+<title>Что в холодильнике</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --ground:#EAF0ED; --surface:#FFFFFF; --surface-2:#F4F8F6;
+  --ink:#12231E; --ink-2:#4A5D56; --ink-3:#74867F; --line:#D2DDD8;
+  --brand:#1B5C4C; --brand-soft:#D6E8E0;
+  --yolk:#F4B609; --yolk-soft:#FBEDC0; --on-yolk:#1A1405;
+  --fresh:#23804F; --fresh-soft:#DAEFE2;
+  --soon:#C85F0E; --soon-soft:#FBE5D1;
+  --bad:#BF362D; --bad-soft:#F7DAD7;
+  --bezel:#17241F; --shadow:rgba(12,40,32,.28);
+  --display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --sans:"Onest",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0D1512; --surface:#15201C; --surface-2:#1B2924;
+    --ink:#E3ECE8; --ink-2:#A2B4AC; --ink-3:#71847C; --line:#2A3933;
+    --brand:#76CBB2; --brand-soft:#1C3931;
+    --yolk:#F5C12A; --yolk-soft:#3A3113; --on-yolk:#1A1405;
+    --fresh:#58C68C; --fresh-soft:#163427;
+    --soon:#F29549; --soon-soft:#3B2716;
+    --bad:#F0706A; --bad-soft:#3C1E1C;
+    --bezel:#040807; --shadow:rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0D1512; --surface:#15201C; --surface-2:#1B2924;
+  --ink:#E3ECE8; --ink-2:#A2B4AC; --ink-3:#71847C; --line:#2A3933;
+  --brand:#76CBB2; --brand-soft:#1C3931;
+  --yolk:#F5C12A; --yolk-soft:#3A3113; --on-yolk:#1A1405;
+  --fresh:#58C68C; --fresh-soft:#163427;
+  --soon:#F29549; --soon-soft:#3B2716;
+  --bad:#F0706A; --bad-soft:#3C1E1C;
+  --bezel:#040807; --shadow:rgba(0,0,0,.6);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:var(--brand)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--brand);outline-offset:3px;border-radius:4px}
+h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.15;text-wrap:balance;margin:0}
+h2{font-size:clamp(26px,3.4vw,38px);letter-spacing:-.01em}
+h3{font-size:18px;font-weight:500;letter-spacing:0}
+p{margin:0}
+.wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+.prose{max-width:65ch;color:var(--ink-2)}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--mono)}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--ground) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;height:58px}
+.mark{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:700;font-size:15px;color:var(--ink);text-decoration:none;white-space:nowrap}
+.mark i{width:22px;height:28px;border-radius:5px;border:2px solid var(--ink);position:relative;display:block}
+.mark i::before{content:"";position:absolute;left:0;right:0;top:9px;border-top:2px solid var(--ink)}
+.mark i::after{content:"";position:absolute;right:3px;top:3px;width:2px;height:4px;background:var(--ink);box-shadow:0 10px 0 var(--ink)}
+.toc{display:flex;gap:18px;overflow-x:auto;font-size:14px;scrollbar-width:none}
+.toc a{color:var(--ink-2);text-decoration:none;white-space:nowrap}
+.toc a:hover{color:var(--ink)}
+
+/* hero */
+.hero{padding:56px 0 40px}
+.hero .wrap{display:grid;grid-template-columns:1.25fr 1fr;gap:48px;align-items:center}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.hero h1{font-size:clamp(34px,5.2vw,64px);letter-spacing:-.02em;margin:14px 0 20px}
+.hero h1 mark{background:linear-gradient(transparent 58%,var(--yolk) 58%, var(--yolk) 92%,transparent 92%);color:inherit;padding:0 .05em}
+.hero .lede{font-size:19px;color:var(--ink-2);max-width:40ch}
+.facts{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px}
+.loop{width:100%;max-width:420px;justify-self:center}
+.loop text{font-family:var(--sans)}
+
+/* stickers */
+.stk{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:11px;font-weight:600;line-height:1;padding:4px 7px;border-radius:4px;white-space:nowrap;border:1px dashed currentColor}
+.stk.fresh{color:var(--fresh);background:var(--fresh-soft)}
+.stk.soon{color:var(--soon);background:var(--soon-soft)}
+.stk.bad{color:var(--bad);background:var(--bad-soft)}
+.stk.plain{color:var(--ink-2);background:var(--surface-2)}
+.stk.brand{color:var(--brand);background:var(--brand-soft)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:5px 11px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
+
+section.block{padding:64px 0;border-top:1px solid var(--line)}
+.head{display:grid;gap:12px;margin-bottom:34px}
+
+/* screens strip */
+.strip{display:flex;gap:30px;overflow-x:auto;padding:6px 24px 26px;scroll-snap-type:x mandatory;max-width:1160px;margin:0 auto}
+.shot{flex:0 0 auto;width:290px;scroll-snap-align:start;display:flex;flex-direction:column;gap:14px}
+.shot figcaption{display:grid;gap:4px;padding:0 4px}
+.shot figcaption b{font-size:15px}
+.shot figcaption span{font-size:14px;color:var(--ink-2);line-height:1.5}
+.hint{font-size:13px;color:var(--ink-3)}
+
+.phone{width:290px;height:610px;border-radius:40px;background:var(--bezel);padding:8px;box-shadow:0 34px 60px -34px var(--shadow)}
+.scr{width:100%;height:100%;border-radius:33px;background:var(--ground);overflow:hidden;position:relative;display:flex;flex-direction:column;font-size:12.5px;line-height:1.35;color:var(--ink)}
+.sb{height:34px;flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;padding:0 24px;font-size:12px;font-weight:600}
+.sb .isl{width:78px;height:22px;border-radius:12px;background:var(--bezel)}
+.ah{padding:4px 16px 10px;display:grid;gap:3px}
+.ah .t{font-family:var(--display);font-size:18px;font-weight:700}
+.ah .s{color:var(--ink-3);font-size:11.5px}
+.bd{flex:1;min-height:0;overflow:hidden;padding:0 12px;display:flex;flex-direction:column;gap:7px}
+.tabs{flex:0 0 auto;height:62px;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);align-items:center;justify-items:center;font-size:9.5px;color:var(--ink-3)}
+.tabs div{display:grid;justify-items:center;gap:3px}
+.tabs .on{color:var(--brand);font-weight:600}
+.tabs svg{width:20px;height:20px}
+.fab{width:48px;height:48px;border-radius:16px;background:var(--yolk);color:var(--on-yolk);display:grid;place-items:center;margin-top:-18px;box-shadow:0 8px 16px -8px var(--shadow)}
+.fab svg{width:22px;height:22px}
+.seg{display:flex;gap:5px;overflow:hidden}
+.seg span{font-size:11px;padding:5px 9px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);white-space:nowrap}
+.seg .on{background:var(--ink);border-color:var(--ink);color:var(--ground)}
+.row{display:flex;align-items:center;gap:9px;background:var(--surface);border-radius:13px;padding:8px 9px}
+.row .nm{flex:1;min-width:0;display:grid;gap:1px}
+.row .nm b{font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .nm small{color:var(--ink-3);font-size:11px}
+.dot{width:32px;height:32px;border-radius:10px;flex:0 0 auto;display:grid;place-items:center;background:var(--surface-2)}
+.dot i{width:16px;height:16px;border-radius:50%;display:block}
+.alert{background:var(--soon-soft);color:var(--ink);border-radius:13px;padding:9px 11px;display:grid;gap:3px}
+.alert b{color:var(--soon);font-size:12px}
+.alert a{font-weight:600;font-size:11.5px;color:var(--ink);text-decoration:none}
+.btn{display:flex;justify-content:center;align-items:center;gap:6px;height:42px;border-radius:13px;background:var(--yolk);color:var(--on-yolk);font-weight:700;font-size:13px}
+.btn.ghost{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.lbl{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:600;padding:4px 2px 0}
+
+/* camera */
+.cam{background:#101815;color:#EEF4F1}
+.cam .sb{color:#EEF4F1}
+.cam .sb .isl{background:#000}
+.view{flex:1;position:relative;margin:0 8px;border-radius:20px;overflow:hidden;background:
+  linear-gradient(#2A3833 0 0) 0 33%/100% 4px no-repeat,
+  linear-gradient(#2A3833 0 0) 0 66%/100% 4px no-repeat,
+  radial-gradient(120% 70% at 50% 0%,#3C4E47 0%,#1B2622 70%)}
+.obj{position:absolute;border-radius:6px}
+.box{position:absolute;border:2px solid #F5C12A;border-radius:8px}
+.box span{position:absolute;left:-2px;top:-19px;background:#F5C12A;color:#1A1405;font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:5px 5px 5px 0;white-space:nowrap;font-family:var(--mono)}
+.box.q{border-style:dashed;border-color:#FFFFFF}
+.box.q span{background:#FFFFFF}
+.modes{display:flex;justify-content:center;gap:14px;font-size:11px;color:#9FB2AA;padding:12px 0 6px}
+.modes .on{color:#F5C12A;font-weight:700}
+.shutter{display:flex;justify-content:space-between;align-items:center;padding:6px 34px 18px}
+.shutter .big{width:62px;height:62px;border-radius:50%;border:4px solid #EEF4F1;display:grid;place-items:center}
+.shutter .big i{width:46px;height:46px;border-radius:50%;background:#EEF4F1;display:block}
+.shutter .sm{width:36px;height:36px;border-radius:11px;background:#26332E;display:grid;place-items:center;font-size:10px;font-family:var(--mono)}
+
+/* recipe card */
+.plate{height:128px;border-radius:14px 14px 0 0;position:relative;background:var(--brand-soft);overflow:hidden}
+.plate::before{content:"";position:absolute;width:150px;height:150px;left:50%;top:50%;transform:translate(-50%,-44%);border-radius:50%;background:
+  radial-gradient(circle at 36% 40%,#C9793A 0 13%,transparent 14%),
+  radial-gradient(circle at 58% 34%,#B8652C 0 11%,transparent 12%),
+  radial-gradient(circle at 64% 58%,#7BA94A 0 8%,transparent 9%),
+  radial-gradient(circle at 44% 62%,#8DBB55 0 7%,transparent 8%),
+  radial-gradient(circle at 50% 50%,#F1E9D4 0 44%,transparent 45%),
+  radial-gradient(circle at 50% 50%,#FAFAF7 0 64%,#E3E7E4 65% 69%,transparent 70%)}
+.card{background:var(--surface);border-radius:14px;overflow:hidden}
+.card .in{padding:10px 11px 11px;display:grid;gap:6px}
+.card .ttl{font-weight:700;font-size:13.5px}
+.meta{display:flex;gap:10px;color:var(--ink-3);font-size:11px}
+.ring{position:absolute;right:10px;top:10px;width:46px;height:46px;border-radius:50%;background:conic-gradient(var(--fresh) 0 89%,var(--surface-2) 89% 100%);display:grid;place-items:center}
+.ring b{width:36px;height:36px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:11px;font-family:var(--mono)}
+.mini{display:flex;gap:9px;background:var(--surface);border-radius:13px;padding:8px}
+.mini .ph{width:48px;height:48px;border-radius:10px;flex:0 0 auto}
+.mini .nm{display:grid;gap:3px;align-content:center;min-width:0}
+.mini .nm b{font-size:12px}
+
+/* plan */
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.days span{display:grid;justify-items:center;gap:1px;padding:6px 0;border-radius:10px;font-size:10px;color:var(--ink-3);background:var(--surface)}
+.days span b{font-size:13px;color:var(--ink)}
+.days .on{background:var(--ink);color:var(--ground)}
+.days .on b{color:var(--ground)}
+.slot{background:var(--surface);border-radius:13px;padding:9px 10px;display:grid;gap:4px}
+.slot .top-l{display:flex;justify-content:space-between;align-items:center;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:600}
+.slot b{font-size:13px}
+.slot svg{width:13px;height:13px}
+.bar{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--brand);border-radius:3px}
+.kbju{background:var(--surface);border-radius:13px;padding:9px 10px;display:grid;gap:6px;font-size:11px}
+.kbju .ln{display:grid;grid-template-columns:40px 1fr auto;gap:8px;align-items:center}
+
+/* shopping */
+.budget{background:var(--surface);border-radius:13px;padding:10px;display:grid;gap:6px}
+.budget .bar i{background:var(--yolk)}
+.item{display:flex;gap:9px;align-items:flex-start;padding:7px 4px;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.cb{width:18px;height:18px;border-radius:6px;border:1.5px solid var(--ink-3);flex:0 0 auto;margin-top:1px;display:grid;place-items:center}
+.cb.ok{background:var(--brand);border-color:var(--brand);color:var(--ground)}
+.cb svg{width:12px;height:12px}
+.item .nm{flex:1;display:grid;gap:1px}
+.item .nm small{font-size:10.5px;color:var(--ink-3)}
+.item.done .nm b{text-decoration:line-through;color:var(--ink-3);font-weight:500}
+.item .q{font-family:var(--mono);font-size:11px;color:var(--ink-2)}
+.group{background:var(--surface);border-radius:13px;padding:4px 9px}
+.av{width:18px;height:18px;border-radius:50%;background:var(--brand);color:var(--ground);font-size:9px;display:inline-grid;place-items:center;font-weight:700}
+
+/* cooking mode */
+.cook{background:var(--ink);color:var(--ground)}
+.cook .sb .isl{background:#000}
+.cook .step{padding:4px 20px;display:grid;gap:14px;flex:1;align-content:start}
+.cook .big{font-family:var(--display);font-size:21px;line-height:1.28;font-weight:500}
+.timer{width:150px;height:150px;border-radius:50%;justify-self:center;background:conic-gradient(var(--yolk) 0 62%,color-mix(in srgb,var(--ground) 16%,transparent) 62% 100%);display:grid;place-items:center;margin-top:6px}
+.timer b{width:128px;height:128px;border-radius:50%;background:var(--ink);display:grid;place-items:center;font-family:var(--mono);font-size:28px;font-weight:600;color:var(--ground)}
+.progress{display:flex;gap:4px;padding:0 20px}
+.progress i{flex:1;height:4px;border-radius:2px;background:color-mix(in srgb,var(--ground) 22%,transparent)}
+.progress i.on{background:var(--yolk)}
+.cook .nav{display:grid;grid-template-columns:1fr 2fr;gap:8px;padding:12px 16px 20px}
+.cook .nav div{height:48px;border-radius:14px;display:grid;place-items:center;font-weight:700}
+.cook .nav .b1{background:color-mix(in srgb,var(--ground) 14%,transparent)}
+.cook .nav .b2{background:var(--yolk);color:var(--on-yolk)}
+.cook .say{font-size:11px;opacity:.65;text-align:center}
+.cook .chipd{font-size:11px;padding:4px 9px;border-radius:999px;border:1px solid color-mix(in srgb,var(--ground) 30%,transparent)}
+
+/* mechanics */
+.mech{display:grid;gap:0}
+.m{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:48px;padding:40px 0;border-top:1px dashed var(--line)}
+.m:first-child{border-top:0;padding-top:0}
+.m .txt{display:grid;gap:14px;align-content:start}
+.m .txt h3{font-size:22px}
+.tag{font-family:var(--mono);font-size:12px;color:var(--brand)}
+ul.rules{margin:0;padding:0;list-style:none;display:grid;gap:10px}
+ul.rules li{padding-left:18px;position:relative;color:var(--ink-2)}
+ul.rules li::before{content:"";position:absolute;left:0;top:.62em;width:8px;height:2px;background:var(--brand)}
+ul.rules b{color:var(--ink);font-weight:600}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;display:grid;gap:16px;align-content:start}
+.panel h4{margin:0;font-size:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);font-weight:600}
+.formula{font-family:var(--mono);font-size:13.5px;line-height:1.75;background:var(--surface-2);border-radius:10px;padding:14px 16px;overflow-x:auto;white-space:pre;color:var(--ink)}
+.formula em{font-style:normal;color:var(--ink-3)}
+.inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.inp{display:grid;gap:2px;padding:10px 12px;border-radius:10px;background:var(--surface-2)}
+.inp small{font-size:12px;color:var(--ink-3)}
+.inp b{font-size:14px;font-weight:600}
+
+.scale{display:grid;grid-template-columns:3fr 2fr 1fr 1.2fr;gap:4px}
+.scale div{display:grid;gap:8px;align-content:start}
+.scale i{height:10px;border-radius:3px;display:block}
+.scale small{font-size:12px;color:var(--ink-2);line-height:1.4}
+
+ol.steps{margin:0;padding:0;list-style:none;counter-reset:s;display:grid;gap:0}
+ol.steps li{counter-increment:s;display:grid;grid-template-columns:34px 1fr;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+ol.steps li:first-child{border-top:0;padding-top:0}
+ol.steps li::before{content:counter(s);width:26px;height:26px;border-radius:8px;background:var(--brand-soft);color:var(--brand);font-family:var(--mono);font-weight:600;font-size:13px;display:grid;place-items:center}
+ol.steps b{display:block;font-weight:600}
+ol.steps span{color:var(--ink-2);font-size:15px}
+
+.modes-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.mode{padding:12px 14px;border-radius:12px;background:var(--surface-2);display:grid;gap:4px}
+.mode b{font-size:14.5px}
+.mode span{font-size:13.5px;color:var(--ink-2);line-height:1.45}
+
+/* week */
+.week{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:16px}
+table{border-collapse:collapse;width:100%;min-width:860px;font-size:14px}
+th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+thead th{font-family:var(--mono);font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);font-weight:600;background:var(--surface-2)}
+td.day{font-weight:700;white-space:nowrap}
+td.day small{display:block;font-weight:400;color:var(--ink-3);font-family:var(--mono);font-size:12px}
+td .d{display:grid;gap:5px;justify-items:start}
+.cooktag{font-size:11px;color:var(--brand);font-family:var(--mono)}
+.lo{color:var(--ink-3)}
+.twocol{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:28px;margin-top:28px;align-items:start}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:6px 20px 16px}
+.list h4{font-size:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin:16px 0 4px;font-weight:600}
+.li{display:grid;grid-template-columns:1fr auto auto;gap:14px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:14.5px;align-items:baseline}
+.li small{display:block;color:var(--ink-3);font-size:12.5px}
+.li .qty{font-family:var(--mono);font-size:13px;color:var(--ink-2);white-space:nowrap}
+.li .rub{font-variant-numeric:tabular-nums;white-space:nowrap;min-width:56px;text-align:right}
+.total{display:flex;justify-content:space-between;padding-top:14px;font-weight:700;font-size:17px}
+.side{display:grid;gap:16px}
+.note{padding:16px 18px;border-radius:14px;background:var(--yolk-soft);color:var(--ink);font-size:14.5px;display:grid;gap:6px}
+.note b{font-weight:700}
+
+/* design system */
+.sw{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.sw div{border-radius:12px;overflow:hidden;background:var(--surface);border:1px solid var(--line)}
+.sw i{display:block;height:64px}
+.sw p{padding:8px 10px;font-size:13px;display:grid}
+.sw p small{font-family:var(--mono);color:var(--ink-3);font-size:11.5px}
+.typo{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px}
+.typo div{padding:18px;border-radius:14px;background:var(--surface);border:1px solid var(--line);display:grid;gap:8px;align-content:start}
+.typo small{color:var(--ink-3);font-size:12.5px}
+.principles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 40px;margin-top:28px}
+.principles div{display:grid;gap:4px;padding-top:12px;border-top:2px solid var(--ink)}
+.principles span{color:var(--ink-2);font-size:15px}
+
+/* tech & roadmap */
+.stack{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 40px}
+.st{display:grid;grid-template-columns:130px 1fr;gap:14px;padding:14px 0;border-bottom:1px solid var(--line)}
+.st b{font-weight:600}
+.st span{color:var(--ink-2);font-size:15px}
+pre.model{margin:24px 0 0;font-family:var(--mono);font-size:13px;line-height:1.7;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;overflow-x:auto;color:var(--ink-2)}
+pre.model b{color:var(--ink);font-weight:600}
+.road{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.phase{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:grid;gap:12px;align-content:start}
+.phase.now{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.phase h3{font-size:17px}
+.phase ul{margin:0;padding-left:18px;color:var(--ink-2);font-size:15px;display:grid;gap:6px}
+.qs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.qs div{padding:16px 18px;border-radius:14px;background:var(--surface);border:1px solid var(--line);display:grid;gap:4px}
+.qs span{font-size:14.5px;color:var(--ink-2)}
+footer{padding:36px 0 60px;color:var(--ink-3);font-size:13px;border-top:1px solid var(--line)}
+
+@media (max-width:900px){
+  .hero .wrap,.m,.twocol,.stack{grid-template-columns:1fr}
+  .m{gap:22px}
+  .road,.typo{grid-template-columns:1fr}
+  .principles,.qs{grid-template-columns:1fr}
+  .toc{display:none}
+}
+@media (max-width:560px){
+  .modes-list,.inputs{grid-template-columns:1fr}
+  .st{grid-template-columns:1fr;gap:4px}
+}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-fridge" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M5 9.5h14M8.5 5.5v1.5M8.5 12.5v3"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-cart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h2.5l2.2 11h10.6L20.5 7.5H6.4"/><circle cx="9.5" cy="19.5" r="1.4"/><circle cx="17" cy="19.5" r="1.4"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16M7.5 12h9"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+</svg>
+
+<header class="top">
+  <div class="wrap">
+    <a class="mark" href="#top"><i></i>Что в холодильнике</a>
+    <nav class="toc" aria-label="Разделы">
+      <a href="#screens">Экраны</a>
+      <a href="#mechanics">Механики</a>
+      <a href="#week">Неделя на двоих</a>
+      <a href="#design">Дизайн-система</a>
+      <a href="#iphone">На iPhone</a>
+      <a href="#tech">Технологии</a>
+      <a href="#roadmap">План</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <div class="eyebrow">Семейное приложение для iPhone · концепция v0.2 · 13.09.2026</div>
+        <h1>Сфотографируй полку&nbsp;— получи <mark>ужин</mark>, рацион и&nbsp;список покупок</h1>
+        <p class="lede">Приложение знает, что лежит в холодильнике и когда это испортится, подбирает рецепты под эти продукты, строит меню на неделю для всей семьи и считает, что осталось докупить.</p>
+        <div class="facts">
+          <span class="stk soon">кефир · до 14.09</span>
+          <span class="stk fresh">кабачок · ~18.09</span>
+          <span class="stk brand">2 человека × 7 дней</span>
+          <span class="stk plain">15 покупок ≈ 2 560 ₽</span>
+        </div>
+      </div>
+      <svg class="loop" viewBox="0 0 360 360" role="img" aria-label="Цикл: скан, холодильник, рецепты, рацион, покупки и снова скан чека">
+        <circle cx="180" cy="180" r="130" fill="none" stroke="var(--line)" stroke-width="2" stroke-dasharray="3 6"/>
+        <g fill="var(--brand)">
+          <path d="M-6,-5 L6,0 L-6,5 Z" transform="translate(256.4,74.8) rotate(36)"/>
+          <path d="M-6,-5 L6,0 L-6,5 Z" transform="translate(303.6,220.2) rotate(108)"/>
+          <path d="M-6,-5 L6,0 L-6,5 Z" transform="translate(180,310) rotate(180)"/>
+          <path d="M-6,-5 L6,0 L-6,5 Z" transform="translate(56.4,220.2) rotate(252)"/>
+          <path d="M-6,-5 L6,0 L-6,5 Z" transform="translate(103.6,74.8) rotate(324)"/>
+        </g>
+        <g font-size="11.5" font-weight="600" text-anchor="middle">
+          <circle cx="180" cy="50" r="40" fill="var(--yolk)"/>
+          <text x="180" y="54" fill="var(--on-yolk)">Скан</text>
+          <circle cx="303.6" cy="139.8" r="40" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="303.6" y="136" fill="var(--ink)">Холо-</text><text x="303.6" y="150" fill="var(--ink)">дильник</text>
+          <circle cx="256.4" cy="285.2" r="40" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="256.4" y="289" fill="var(--ink)">Рецепты</text>
+          <circle cx="103.6" cy="285.2" r="40" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="103.6" y="289" fill="var(--ink)">Рацион</text>
+          <circle cx="56.4" cy="139.8" r="40" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="56.4" y="144" fill="var(--ink)">Покупки</text>
+        </g>
+        <text x="180" y="176" text-anchor="middle" font-family="Unbounded, sans-serif" font-size="17" font-weight="700" fill="var(--ink)">одна петля</text>
+        <text x="180" y="198" text-anchor="middle" font-size="12" fill="var(--ink-3)">чек из магазина снова</text>
+        <text x="180" y="214" text-anchor="middle" font-size="12" fill="var(--ink-3)">попадает в холодильник</text>
+      </svg>
+    </div>
+  </section>
+
+  <section class="block" id="screens">
+    <div class="wrap head">
+      <div class="eyebrow">Экраны</div>
+      <h2>Семь экранов основного сценария</h2>
+      <p class="prose">Внизу пять вкладок: Холодильник, Рецепты, Скан по центру, Рацион, Покупки. Сканирование вынесено в отдельную кнопку&nbsp;— это самое частое действие, до него всегда один тап. <span class="hint">Листайте ленту вбок →</span></p>
+    </div>
+
+    <div class="strip">
+      <!-- 1 Холодильник -->
+      <figure class="shot" style="margin:0">
+        <div class="phone"><div class="scr">
+          <div class="sb"><span class="num">9:41</span><span class="isl"></span><span>5G</span></div>
+          <div class="ah"><span class="s">Дом · Аня и Макс</span><span class="t">Холодильник</span></div>
+          <div class="bd">
+            <div class="seg"><span class="on">Всё 23</span><span>Холодильник</span><span>Морозилка</span><span>Шкаф</span></div>
+            <div class="alert"><b>3 продукта истекают в ближайшие 2 дня</b><a href="#mechanics">Что из них приготовить →</a></div>
+            <div class="row"><div class="dot"><i style="background:#DCE7F2"></i></div><div class="nm"><b>Кефир 2,5%</b><small class="num">900 мл · открыт</small></div><span class="stk soon">до 14.09</span></div>
+            <div class="row"><div class="dot"><i style="background:#E9A99A"></i></div><div class="nm"><b>Куриное бедро</b><small class="num">800 г</small></div><span class="stk soon">до 15.09</span></div>
+            <div class="row"><div class="dot"><i style="background:#F3F0E6;box-shadow:inset 0 0 0 2px #E2DCC8"></i></div><div class="nm"><b>Сметана 15%</b><small class="num">180 г · открыта</small></div><span class="stk soon">до 15.09</span></div>
+            <div class="row"><div class="dot"><i style="background:#7BA94A"></i></div><div class="nm"><b>Кабачок</b><small class="num">2 шт · ~ 600 г</small></div><span class="stk fresh">~18.09</span></div>
+            <div class="row"><div class="dot"><i style="background:#E74C3C"></i></div><div class="nm"><b>Помидоры</b><small class="num">4 шт</small></div><span class="stk fresh">~19.09</span></div>
+            <div class="row"><div class="dot"><i style="background:#F2C46B"></i></div><div class="nm"><b>Сыр российский</b><small class="num">200 г</small></div><span class="stk fresh">до 28.09</span></div>
+            <div class="row"><div class="dot"><i style="background:#EFE2C9"></i></div><div class="nm"><b>Яйца С1</b><small class="num">7 шт</small></div><span class="stk fresh">до 01.10</span></div>
+          </div>
+          <div class="tabs">
+            <div class="on"><svg><use href="#i-fridge"/></svg>Холодильник</div>
+            <div><svg><use href="#i-book"/></svg>Рецепты</div>
+            <div class="fab"><svg><use href="#i-scan"/></svg></div>
+            <div><svg><use href="#i-cal"/></svg>Рацион</div>
+            <div><svg><use href="#i-cart"/></svg>Покупки</div>
+          </div>
+        </div></div>
+        <figcaption><b>Холодильник</b><span>Все продукты со сроками. Сверху&nbsp;— то, что скоро испортится, и кнопка сразу к рецептам из этих продуктов.</span></figcaption>
+      </figure>
+
+      <!-- 2 Скан -->
+      <figure class="shot" style="margin:0">
+        <div class="phone"><div class="scr cam">
+          <div class="sb"><span class="num">9:42</span><span class="isl"></span><span>5G</span></div>
+          <div class="view">
+            <div class="obj" style="left:22px;top:30px;width:38px;height:96px;background:#DDE6EE;border-radius:8px 8px 4px 4px"></div>
+            <div class="obj" style="left:74px;top:70px;width:92px;height:56px;background:#D98E7C;border-radius:10px"></div>
+            <div class="obj" style="left:186px;top:62px;width:52px;height:64px;background:#6D5A3C;border-radius:14px 14px 6px 6px"></div>
+            <div class="obj" style="left:26px;top:196px;width:34px;height:34px;background:#E74C3C;border-radius:50%;box-shadow:40px 4px 0 #D84436,20px -22px 0 #E85A48,62px -16px 0 #E24B3B"></div>
+            <div class="obj" style="left:142px;top:188px;width:104px;height:30px;background:#6E9E42;border-radius:15px;transform:rotate(-8deg)"></div>
+            <div class="obj" style="left:40px;top:300px;width:70px;height:54px;background:#F3F0E6;border-radius:8px"></div>
+            <div class="obj" style="left:134px;top:310px;width:96px;height:44px;background:#EFE2C9;border-radius:6px"></div>
+            <div class="box" style="left:16px;top:24px;width:50px;height:108px"><span>Кефир 96%</span></div>
+            <div class="box" style="left:68px;top:64px;width:104px;height:68px"><span>Курица 91%</span></div>
+            <div class="box q" style="left:180px;top:56px;width:64px;height:76px"><span>Соус?</span></div>
+            <div class="box" style="left:18px;top:168px;width:112px;height:70px"><span>Помидоры ×4</span></div>
+            <div class="box" style="left:136px;top:174px;width:118px;height:56px"><span>Кабачок 88%</span></div>
+            <div class="box q" style="left:34px;top:294px;width:82px;height:66px"><span>Сметана?</span></div>
+            <div class="box" style="left:128px;top:304px;width:108px;height:56px"><span>Яйца 94%</span></div>
+          </div>
+          <div class="modes"><span class="on">Полка</span><span>Чек QR</span><span>Штрихкод</span><span>Голос</span></div>
+          <div class="shutter"><span class="sm">3/5</span><span class="big"><i></i></span><span class="sm">✓</span></div>
+        </div></div>
+        <figcaption><b>Скан полки</b><span>Снимаете каждую полку по очереди. Через пару секунд на снимке появляются рамки с продуктами. Пунктирная рамка&nbsp;— модель не уверена и потом переспросит.</span></figcaption>
+      </figure>
+
+      <!-- 3 Проверка -->
+      <figure class="shot" style="margin:0">
+        <div class="phone"><div class="scr">
+          <div class="sb"><span class="num">9:43</span><span class="isl"></span><span>5G</span></div>
+          <div class="ah"><span class="s">Скан из 5 фото</span><span class="t">Нашли 9 продуктов</span></div>
+          <div class="bd">
+            <div class="lbl">Нужно уточнить · 2</div>
+            <div class="slot">
+              <b>Белая баночка на нижней полке</b>
+              <div class="seg"><span class="on">Сметана</span><span>Йогурт</span><span>Творог</span><span>Другое</span></div>
+            </div>
+            <div class="slot">
+              <b>Кефир&nbsp;— сколько осталось?</b>
+              <div style="display:flex;gap:4px"><i style="flex:1;height:22px;border-radius:6px;background:var(--brand)"></i><i style="flex:1;height:22px;border-radius:6px;background:var(--brand)"></i><i style="flex:1;height:22px;border-radius:6px;background:var(--brand)"></i><i style="flex:1;height:22px;border-radius:6px;background:var(--surface-2)"></i></div>
+              <small style="color:var(--ink-3)" class="num">≈ ¾ · 675 мл</small>
+            </div>
+            <div class="lbl">Распознано · 7</div>
+            <div class="row"><div class="dot"><i style="background:#E9A99A"></i></div><div class="nm"><b>Куриное бедро</b><small>800 г · срок по упаковке</small></div><span class="stk soon">до 15.09</span></div>
+            <div class="row"><div class="dot"><i style="background:#7BA94A"></i></div><div class="nm"><b>Кабачок</b><small>2 шт · срок примерный</small></div><span class="stk fresh">~18.09</span></div>
+            <div class="row"><div class="dot"><i style="background:#E74C3C"></i></div><div class="nm"><b>Помидоры</b><small>4 шт</small></div><span class="stk fresh">~19.09</span></div>
+            <div class="row"><div class="dot"><i style="background:#EFE2C9"></i></div><div class="nm"><b>Яйца С1</b><small>7 шт</small></div><span class="stk fresh">до 01.10</span></div>
+            <div class="btn" style="margin-top:auto;margin-bottom:12px">Добавить 9 продуктов</div>
+          </div>
+        </div></div>
+        <figcaption><b>Проверка результата</b><span>Сначала вопросы, где модель сомневается, затем всё остальное. Количество жидкостей задаётся на глаз, делениями шкалы, а не в миллилитрах.</span></figcaption>
+      </figure>
+
+      <!-- 4 Рецепты -->
+      <figure class="shot" style="margin:0">
+        <div class="phone"><div class="scr">
+          <div class="sb"><span class="num">18:20</span><span class="isl"></span><span>5G</span></div>
+          <div class="ah"><span class="s">Ужин на двоих · до 45 мин</span><span class="t">Что приготовить</span></div>
+          <div class="bd">
+            <div class="seg"><span class="on">Спасти продукты</span><span>Всё есть</span><span>Докупить 1–2</span></div>
+            <div class="card" style="position:relative">
+              <div class="plate"></div>
+              <div class="ring"><b>89%</b></div>
+              <div class="in">
+                <span class="ttl">Курица с рисом и кабачком</span>
+                <div class="meta"><span>40 мин</span><span>4 порции</span><span>520 ккал</span></div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap"><span class="stk soon">спасает курицу</span><span class="stk fresh">есть 8 из 9</span></div>
+                <small style="color:var(--ink-3)">Нет лука → подойдёт порей или без лука</small>
+              </div>
+            </div>
+            <div class="mini"><div class="ph" style="background:radial-gradient(circle at 50% 50%,#F2D27A 0 45%,#E0A94B 46% 60%,var(--brand-soft) 61%)"></div><div class="nm"><b>Оладьи на кефире</b><div class="meta"><span>25 мин</span><span class="stk soon">спасает кефир</span></div></div></div>
+            <div class="mini"><div class="ph" style="background:radial-gradient(circle at 42% 48%,#E74C3C 0 14%,transparent 15%),radial-gradient(circle at 60% 58%,#F4D35E 0 16%,transparent 17%),radial-gradient(circle,#C1502E 0 58%,var(--brand-soft) 59%)"></div><div class="nm"><b>Шакшука</b><div class="meta"><span>20 мин</span><span class="stk plain">+ перец</span></div></div></div>
+          </div>
+          <div class="tabs">
+            <div><svg><use href="#i-fridge"/></svg>Холодильник</div>
+            <div class="on"><svg><use href="#i-book"/></svg>Рецепты</div>
+            <div class="fab"><svg><use href="#i-scan"/></svg></div>
+            <div><svg><use href="#i-cal"/></svg>Рацион</div>
+            <div><svg><use href="#i-cart"/></svg>Покупки</div>
+          </div>
+        </div></div>
+        <figcaption><b>Подборка рецептов</b><span>Три полки: «Спасти продукты», «Всё есть», «Докупить 1–2». Кольцо показывает, какая доля ингредиентов уже дома. Замены предлагаются прямо в карточке.</span></figcaption>
+      </figure>
+
+      <!-- 5 Готовка -->
+      <figure class="shot" style="margin:0">
+        <div class="phone"><div class="scr cook">
+          <div class="sb"><span class="num">18:47</span><span class="isl"></span><span>5G</span></div>
+          <div class="progress"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+          <div class="step">
+            <span style="font-size:11.5px;opacity:.7;padding-top:10px">Шаг 3 из 6 · Курица с рисом</span>
+            <p class="big">Обжарьте курицу до золотистой корочки, затем добавьте кабачок кубиками.</p>
+            <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="chipd">бедро 800 г</span><span class="chipd">кабачок 1 шт</span><span class="chipd">масло 2 ст. л.</span></div>
+            <div class="timer"><b>04:12</b></div>
+            <span class="say">Коснитесь экрана в любом месте&nbsp;— следующий шаг</span>
+          </div>
+          <div class="nav"><div class="b1">Назад</div><div class="b2">Дальше</div></div>
+        </div></div>
+        <figcaption><b>Режим готовки</b><span>Экран не гаснет, текст крупный, таймеры запускаются прямо из шага, для перелистывания хватит касания испачканным пальцем. После последнего шага&nbsp;— «Списать продукты?» и «Куда остатки?».</span></figcaption>
+      </figure>
+
+      <!-- 6 Рацион -->
+      <figure class="shot" style="margin:0">
+        <div class="phone"><div class="scr">
+          <div class="sb"><span class="num">21:05</span><span class="isl"></span><span>5G</span></div>
+          <div class="ah"><span class="s">14–20 сентября · на двоих</span><span class="t">Рацион</span></div>
+          <div class="bd">
+            <div class="days">
+              <span>Пн<b>14</b></span><span class="on">Вт<b>15</b></span><span>Ср<b>16</b></span><span>Чт<b>17</b></span><span>Пт<b>18</b></span><span>Сб<b>19</b></span><span>Вс<b>20</b></span>
+            </div>
+            <div class="slot"><div class="top-l"><span>Завтрак · 15 мин</span><svg><use href="#i-swap"/></svg></div><b>Гренки с яйцом и сыром</b></div>
+            <div class="slot"><div class="top-l"><span>Обед</span><span class="stk brand">остатки с пн</span></div><b>Курица с рисом и кабачком</b></div>
+            <div class="slot"><div class="top-l"><span>Ужин · 25 мин</span><svg style="color:var(--brand)"><use href="#i-lock"/></svg></div><b>Паста с кабачком и сметаной</b><div style="display:flex;gap:4px"><span class="stk soon">доедает сметану</span></div></div>
+            <div class="kbju">
+              <div class="ln"><b>Аня</b><div class="bar"><i style="width:88%"></i></div><span class="num mono">1 760/2 000</span></div>
+              <div class="ln"><b>Макс</b><div class="bar"><i style="width:92%"></i></div><span class="num mono">2 390/2 600</span></div>
+            </div>
+            <div class="btn" style="margin-top:auto;margin-bottom:12px"><svg style="width:16px;height:16px"><use href="#i-cart"/></svg>Список покупок · 15</div>
+          </div>
+          <div class="tabs">
+            <div><svg><use href="#i-fridge"/></svg>Холодильник</div>
+            <div><svg><use href="#i-book"/></svg>Рецепты</div>
+            <div class="fab"><svg><use href="#i-scan"/></svg></div>
+            <div class="on"><svg><use href="#i-cal"/></svg>Рацион</div>
+            <div><svg><use href="#i-cart"/></svg>Покупки</div>
+          </div>
+        </div></div>
+        <figcaption><b>Рацион на неделю</b><span>У каждого приёма пищи есть замок (оставить блюдо при пересборке) и кнопка замены. Полоски калорий считаются для каждого члена семьи отдельно.</span></figcaption>
+      </figure>
+
+      <!-- 7 Покупки -->
+      <figure class="shot" style="margin:0">
+        <div class="phone"><div class="scr">
+          <div class="sb"><span class="num">12:10</span><span class="isl"></span><span>5G</span></div>
+          <div class="ah"><span class="s">Общий список · Аня и Макс</span><span class="t">Покупки</span></div>
+          <div class="bd">
+            <div class="budget">
+              <div style="display:flex;justify-content:space-between;font-size:11.5px"><b class="num">≈ 2 560 ₽</b><span class="num" style="color:var(--ink-3)">бюджет 3 000 ₽</span></div>
+              <div class="bar"><i style="width:85%"></i></div>
+            </div>
+            <div class="lbl">Молочное · 3</div>
+            <div class="group">
+              <div class="item done"><span class="cb ok"><svg><use href="#i-check"/></svg></span><span class="nm"><b>Творог 5%</b><small><span class="av">М</span> Макс взял</small></span><span class="q">2×200 г</span></div>
+              <div class="item"><span class="cb"></span><span class="nm"><b>Яйца С1</b><small>шакшука, сырники, омлет</small></span><span class="q">10 шт</span></div>
+              <div class="item"><span class="cb"></span><span class="nm"><b>Молоко 3,2%</b><small>овсянка ×2</small></span><span class="q">930 мл</span></div>
+            </div>
+            <div class="lbl">Мясо и рыба · 2</div>
+            <div class="group">
+              <div class="item"><span class="cb"></span><span class="nm"><b>Свиная лопатка</b><small>гречка по-купечески</small></span><span class="q">600 г</span></div>
+              <div class="item"><span class="cb"></span><span class="nm"><b>Филе трески</b><small>треска с картофелем</small></span><span class="q">500 г</span></div>
+            </div>
+            <div class="btn ghost" style="margin-top:auto;margin-bottom:12px">Всё куплено → в холодильник</div>
+          </div>
+          <div class="tabs">
+            <div><svg><use href="#i-fridge"/></svg>Холодильник</div>
+            <div><svg><use href="#i-book"/></svg>Рецепты</div>
+            <div class="fab"><svg><use href="#i-scan"/></svg></div>
+            <div><svg><use href="#i-cal"/></svg>Рацион</div>
+            <div class="on"><svg><use href="#i-cart"/></svg>Покупки</div>
+          </div>
+        </div></div>
+        <figcaption><b>Список покупок</b><span>Сгруппирован по отделам магазина, у каждой позиции подписано, для какого блюда она нужна. Отметки видны второму человеку сразу, купленное одной кнопкой переносится в холодильник.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="block" id="mechanics">
+    <div class="wrap">
+      <div class="head">
+        <div class="eyebrow">Механики</div>
+        <h2>Как это работает внутри</h2>
+        <p class="prose">Весь продукт держится на одной модели данных: у каждого продукта есть количество, место хранения и срок годности. На ней работают рецепты, рацион и список покупок, поэтому любое изменение в одном месте сразу видно в остальных.</p>
+      </div>
+
+      <div class="mech">
+        <!-- Инвентарь -->
+        <div class="m">
+          <div class="txt">
+            <span class="tag">Инвентарь</span>
+            <h3>Четыре способа добавить продукты</h3>
+            <p class="prose">Фото полки подходит для первого заполнения и периодической ревизии, чек удобнее всего после магазина, штрихкод и голос&nbsp;— чтобы добавить одну-две вещи.</p>
+            <ul class="rules">
+              <li><b>Базовые запасы</b> (соль, сахар, масло, мука, специи) один раз отмечаются при онбординге и считаются имеющимися, пока вы сами не скажете «закончилось».</li>
+              <li><b>Автосписание.</b> Приготовили блюдо по рецепту&nbsp;— ингредиенты вычитаются, а остатки блюда появляются в холодильнике как отдельный продукт: «Плов, 2 порции, до 22.09».</li>
+              <li><b>Быстрая ревизия</b> раз в несколько дней: карточки листаются свайпом «ещё есть / закончилось / осталось мало». Уходит 30 секунд, и данные не расходятся с реальностью.</li>
+              <li><b>Места хранения</b>: холодильник, морозилка, шкаф. От места зависит срок: курица в морозилке хранится до 3 месяцев.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h4>Способы ввода</h4>
+            <div class="modes-list">
+              <div class="mode"><b>Фото полки</b><span>Мультимодальная модель возвращает список продуктов с рамками, количеством и уверенностью. Если уверенность ниже 0,75, приложение переспрашивает.</span></div>
+              <div class="mode"><b>Фото чека</b><span>Модель читает позиции, вес и дату покупки прямо со снимка чека. Позже можно добавить QR-код чека (ФН, ФД, ФП) и сервис проверки чеков.</span></div>
+              <div class="mode"><b>Штрихкод</b><span>EAN-13 ищется в Open Food Facts и собственной базе: название, объём, КБЖУ, категория.</span></div>
+              <div class="mode"><b>Текст / диктовка</b><span>«Добавь десяток яиц и литр молока» можно надиктовать микрофоном на клавиатуре iPhone, фраза разбирается на позиции с единицами.</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Свежесть -->
+        <div class="m">
+          <div class="txt">
+            <span class="tag">Сроки годности</span>
+            <h3>Срок годности сдвигается, если упаковку открыли</h3>
+            <p class="prose">Где на упаковке есть дата, берём её из штрихкода или просим сфотографировать. Где даты нет (овощи, развесное), срок оценивается по категории и месту хранения и помечается знаком «~».</p>
+            <ul class="rules">
+              <li><b>Открыли упаковку</b>&nbsp;— срок пересчитывается: открытый кефир хранится 3 дня, даже если на пачке написано 10.</li>
+              <li><b>Утреннее уведомление</b> в день, когда продукт истекает, сразу с тремя рецептами, где он используется.</li>
+              <li><b>Просроченное</b> не удаляется молча: спрашиваем «выбросили?» и учитываем в статистике отходов.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h4>Расчёт срока</h4>
+            <div class="formula">Срок = min(
+  дата с упаковки <em>или</em> покупка + норма(категория, место),
+  вскрытие + норма после вскрытия
+)</div>
+            <h4>Шкала свежести</h4>
+            <div class="scale">
+              <div><i style="background:var(--fresh)"></i><span class="stk fresh">до 01.10</span><small>Больше 3 дней</small></div>
+              <div><i style="background:var(--soon)"></i><span class="stk soon">до 15.09</span><small>1–3 дня, в приоритете у рецептов</small></div>
+              <div><i style="background:var(--bad);opacity:.6"></i><span class="stk bad">сегодня</span><small>Последний день</small></div>
+              <div><i style="background:var(--bad)"></i><span class="stk bad">истёк</span><small>Спросить, выбросили ли</small></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Рецепты -->
+        <div class="m">
+          <div class="txt">
+            <span class="tag">Подбор рецептов</span>
+            <h3>Рецепты ранжируются по совпадению с продуктами, а не по популярности</h3>
+            <p class="prose">В каждом рецепте ингредиенты размечены по роли. Без курицы курица с рисом не получится, а без укропа получится. Поэтому «есть 8 из 9» и «нет главного ингредиента»&nbsp;— очень разные ситуации, и рейтинг это учитывает.</p>
+            <ul class="rules">
+              <li><b>Замены</b>: у ингредиента есть список допустимых замен с коэффициентом («сметана → греческий йогурт, 1:1»). Если замена есть дома, ингредиент считается имеющимся.</li>
+              <li><b>Фильтры семьи</b>: аллергии и «не ем» для каждого человека. Рецепт с кинзой не прячется, а получает автозамену на петрушку.</li>
+              <li><b>Порции</b> пересчитываются под семью, количества округляются до удобных единиц (1 яйцо, а не 0,8).</li>
+              <li><b>Вкус</b> учится на оценках: блюда с оценкой 5★ всплывают чаще, с оценкой 1★ пропадают из подборок.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h4>Рейтинг рецепта</h4>
+            <div class="formula">Совпадение = Σ вес × есть / Σ вес
+  <em>ключевой ингредиент — 3, второстепенный — 1,</em>
+  <em>базовый запас (соль, масло) — 0</em>
+
+Рейтинг = 0,45 · Совпадение
+        + 0,25 · Спасение   <em>доля «скоро истекающих»</em>
+        + 0,15 · Вкус       <em>оценки семьи</em>
+        + 0,15 · Время      <em>влезает в лимит минут</em>
+        − 0,10 · Докупить   <em>за каждый недостающий</em></div>
+            <h4>Три полки подборки</h4>
+            <div class="modes-list">
+              <div class="mode"><b>Спасти продукты</b><span>Использует хотя бы один продукт со сроком ≤ 2 дней. Показывается первой, если такие продукты есть.</span></div>
+              <div class="mode"><b>Всё есть</b><span>Все ключевые ингредиенты дома, можно начинать готовить прямо сейчас.</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Рацион -->
+        <div class="m">
+          <div class="txt">
+            <span class="tag">Рацион</span>
+            <h3>Меню на неделю собирается как пазл</h3>
+            <p class="prose">Цель планировщика&nbsp;— меньше покупок, меньше выброшенного, меньше времени у плиты в будни. Рецепты подбирает детерминированный алгоритм, а языковая модель только объясняет выбор («поставили оладьи на понедельник, чтобы доесть кефир»).</p>
+            <div class="inputs">
+              <div class="inp"><small>Кто ест</small><b>Аня, Макс</b></div>
+              <div class="inp"><small>Период</small><b class="num">14–20 сентября</b></div>
+              <div class="inp"><small>Приёмы пищи</small><b>Завтрак, обед, ужин</b></div>
+              <div class="inp"><small>Дни готовки впрок</small><b>Пн, Ср, Сб, Вс</b></div>
+              <div class="inp"><small>Время в будни</small><b class="num">до 40 мин</b></div>
+              <div class="inp"><small>Бюджет на покупки</small><b class="num">3 000 ₽</b></div>
+            </div>
+          </div>
+          <div class="panel">
+            <h4>Алгоритм сборки</h4>
+            <ol class="steps">
+              <li><div><b>Фильтр</b><span>Убираем рецепты, которые не проходят по аллергиям, технике на кухне (нет духовки&nbsp;— нет запеканок) и времени.</span></div></li>
+              <li><div><b>Спасатели в начало недели</b><span>Блюда из истекающих продуктов ставятся на дни до даты истечения: оладьи на понедельник, потому что кефир годен до 14.09.</span></div></li>
+              <li><div><b>Готовка впрок</b><span>В дни готовки выбираются блюда на 4 порции. Вторая половина автоматически уходит на обед следующего дня.</span></div></li>
+              <li><div><b>Пересечение ингредиентов</b><span>Остальные слоты заполняем рецептами, которые доедают начатые упаковки: купили пачку сметаны&nbsp;— она должна уйти целиком.</span></div></li>
+              <li><div><b>Разнообразие</b><span>Одна основа не повторяется два дня подряд, белки чередуются (птица, мясо, рыба, яйца, бобовые).</span></div></li>
+              <li><div><b>Проверка КБЖУ и бюджета</b><span>Локальный поиск перебирает замены по одному слоту, пока растёт общий рейтинг недели и сумма не выходит за бюджет.</span></div></li>
+              <li><div><b>Правки человека</b><span>Замок, замена или перетаскивание мгновенно пересчитывают список покупок. Кнопка «Пересобрать» не трогает заблокированные слоты.</span></div></li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- Покупки -->
+        <div class="m">
+          <div class="txt">
+            <span class="tag">Список покупок</span>
+            <h3>В списке только то, что действительно нужно докупить, с учётом упаковок</h3>
+            <p class="prose">Продукт, который испортится раньше дня готовки, не считается имеющимся: кефир до 14.09 не спасёт пятничное блюдо. Количество округляется до реальной упаковки, а «хвост» от неё планировщик старается использовать в других блюдах.</p>
+            <ul class="rules">
+              <li><b>Для чего</b>: у каждой позиции подписаны блюда. Убрали блюдо из рациона&nbsp;— позиция пропала или уменьшилась.</li>
+              <li><b>Отделы магазина</b>: овощи, молочное, мясо и рыба, бакалея. Порядок отделов можно подстроить под свой магазин.</li>
+              <li><b>Совместный список</b>: отметки синхронизируются в реальном времени, видно, кто что взял, и никто не купит творог дважды.</li>
+              <li><b>После магазина</b> «Всё куплено» переносит отмеченное в холодильник со сроками по категории, а скан чека уточняет вес и цены.</li>
+              <li><b>Поделиться</b>: список уходит текстом в Telegram или «Заметки», если нужно отправить его кому-то без приложения или заказать доставку.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h4>Расчёт позиции</h4>
+            <div class="formula">Не хватает = Нужно по рациону
+          − Есть (годно на дату готовки)
+Купить    = ⌈ Не хватает / Упаковка ⌉ × Упаковка
+Хвост     = Купить − Не хватает</div>
+            <h4>Пример: яйца</h4>
+            <div class="formula">Нужно    16 шт  <em>омлет 4, гренки 2, шакшука 4,</em>
+               <em>сырники 4, оладьи 2</em>
+Есть      7 шт  <em>до 01.10 — годны всю неделю</em>
+Не хватает 9 шт → 1 упаковка по 10
+Хвост     1 шт  <em>попадёт в холодильник</em></div>
+          </div>
+        </div>
+
+        <!-- Семья и уведомления -->
+        <div class="m">
+          <div class="txt">
+            <span class="tag">Дом и уведомления</span>
+            <h3>Один холодильник на всю семью</h3>
+            <p class="prose">Вы с женой входите в один «дом»: у каждого своё приложение на телефоне, данные общие. Холодильник, рацион и список покупок у всех общие, а цели по КБЖУ, аллергии и нелюбимые продукты задаются каждому отдельно.</p>
+            <ul class="rules">
+              <li><b>Нестандартные ситуации</b>: «ужинаем не дома» переносит блюдо на другой день, «гости в субботу» добавляет 2 порции, и список пересчитывается.</li>
+              <li><b>Статистика без давления</b>: «за сентябрь спасено 3,4 кг продуктов ≈ 1 280 ₽». Без серий, штрафов и геймификации.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h4>Когда приложение пишет само</h4>
+            <ol class="steps">
+              <li><div><b>Воскресенье, 18:00</b><span>«Соберём меню на неделю? В холодильнике 23 продукта, 3 скоро истекают».</span></div></li>
+              <li><div><b>Утро дня истечения</b><span>«Сегодня последний день кефира&nbsp;— оладьи за 25 минут».</span></div></li>
+              <li><div><b>Вечер перед днём готовки</b><span>«Завтра гречка по-купечески: достаньте свинину из морозилки».</span></div></li>
+              <li><div><b>После покупок</b><span>«Отсканируйте чек&nbsp;— продукты сами попадут в холодильник».</span></div></li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="week">
+    <div class="wrap">
+      <div class="head">
+        <div class="eyebrow">Пример расчёта</div>
+        <h2>Неделя на двоих: 14–20 сентября</h2>
+        <p class="prose">Так выглядит результат планировщика при заданных выше вводных. Стартовые продукты: курица 800 г, кабачки, кефир, сметана, помидоры, 7 яиц, сыр, картофель, рис, гречка. Готовка впрок по понедельникам, средам, субботам и воскресеньям. Цены примерные.</p>
+      </div>
+
+      <div class="week">
+        <table>
+          <thead><tr><th>День</th><th>Завтрак</th><th>Обед</th><th>Ужин</th></tr></thead>
+          <tbody>
+            <tr><td class="day">Пн<small>14.09</small></td><td><div class="d">Оладьи на кефире<span class="stk soon">спасает кефир</span></div></td><td>Омлет с кабачком и сыром</td><td><div class="d">Курица с рисом и кабачком<span class="cooktag">×4 порции</span><span class="stk soon">спасает курицу</span></div></td></tr>
+            <tr><td class="day">Вт<small>15.09</small></td><td>Гренки с яйцом и сыром</td><td class="lo">Курица с рисом · остатки</td><td><div class="d">Паста с кабачком и сметаной<span class="stk soon">доедает сметану</span></div></td></tr>
+            <tr><td class="day">Ср<small>16.09</small></td><td>Овсянка с яблоком</td><td>Салат с нутом и тунцом</td><td><div class="d">Гречка по-купечески<span class="cooktag">×4 порции</span></div></td></tr>
+            <tr><td class="day">Чт<small>17.09</small></td><td>Сырники</td><td class="lo">Гречка по-купечески · остатки</td><td>Шакшука с перцем</td></tr>
+            <tr><td class="day">Пт<small>18.09</small></td><td>Овсянка с яблоком</td><td class="lo">Салат с нутом · вторая банка тунца не нужна, хватает остатка</td><td>Треска, запечённая с картофелем</td></tr>
+            <tr><td class="day">Сб<small>19.09</small></td><td>Сырники</td><td><div class="d">Суп-пюре из тыквы<span class="cooktag">×4 порции</span></div></td><td>Пицца на лаваше с грибами и помидорами</td></tr>
+            <tr><td class="day">Вс<small>20.09</small></td><td>Омлет с помидорами</td><td class="lo">Суп-пюре из тыквы · остатки</td><td><div class="d">Плов с курицей из морозилки<span class="cooktag">×4 → обед Пн 21.09</span></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="twocol">
+        <div class="list">
+          <h4>Овощи и фрукты</h4>
+          <div class="li"><span>Перец болгарский<small>шакшука</small></span><span class="qty">2 шт</span><span class="rub">180 ₽</span></div>
+          <div class="li"><span>Яблоки<small>овсянка ×2</small></span><span class="qty">4 шт</span><span class="rub">160 ₽</span></div>
+          <div class="li"><span>Тыква<small>суп-пюре</small></span><span class="qty">1 кг</span><span class="rub">90 ₽</span></div>
+          <div class="li"><span>Шампиньоны<small>пицца на лаваше</small></span><span class="qty">300 г</span><span class="rub">150 ₽</span></div>
+          <h4>Молочное и яйца</h4>
+          <div class="li"><span>Творог 5%<small>сырники ×2</small></span><span class="qty">2×200 г</span><span class="rub">260 ₽</span></div>
+          <div class="li"><span>Молоко 3,2%<small>овсянка ×2, хвост 130 мл</small></span><span class="qty">930 мл</span><span class="rub">110 ₽</span></div>
+          <div class="li"><span>Яйца С1<small>5 блюд, хвост 1 шт</small></span><span class="qty">10 шт</span><span class="rub">130 ₽</span></div>
+          <h4>Мясо и рыба</h4>
+          <div class="li"><span>Свиная лопатка<small>гречка по-купечески</small></span><span class="qty">600 г</span><span class="rub">330 ₽</span></div>
+          <div class="li"><span>Филе трески<small>треска с картофелем</small></span><span class="qty">500 г</span><span class="rub">450 ₽</span></div>
+          <div class="li"><span>Тунец консервированный<small>салат с нутом ×2</small></span><span class="qty">1 банка</span><span class="rub">180 ₽</span></div>
+          <h4>Бакалея</h4>
+          <div class="li"><span>Овсяные хлопья</span><span class="qty">400 г</span><span class="rub">90 ₽</span></div>
+          <div class="li"><span>Нут консервированный</span><span class="qty">1 банка</span><span class="rub">120 ₽</span></div>
+          <div class="li"><span>Паста</span><span class="qty">450 г</span><span class="rub">110 ₽</span></div>
+          <div class="li"><span>Лаваш тонкий</span><span class="qty">1 уп.</span><span class="rub">70 ₽</span></div>
+          <div class="li"><span>Томаты в собственном соку<small>шакшука, пицца</small></span><span class="qty">1 банка</span><span class="rub">130 ₽</span></div>
+          <div class="total"><span>15 позиций</span><span class="num">≈ 2 560 ₽</span></div>
+        </div>
+        <div class="side">
+          <div class="note"><b>Чего нет в списке и почему</b><span>Курица, кабачки, кефир и сметана уже дома и распределены по дням до истечения срока. Рис, гречка, картофель, лук и специи отмечены как базовые запасы. Курица для плова лежит в морозилке.</span></div>
+          <div class="panel">
+            <h4>Итог недели</h4>
+            <div class="inputs">
+              <div class="inp"><small>Блюд приготовить</small><b class="num">17</b></div>
+              <div class="inp"><small>Обедов из остатков</small><b class="num">4</b></div>
+              <div class="inp"><small>Спасено продуктов</small><b class="num">4 из 4</b></div>
+              <div class="inp"><small>Хвосты упаковок</small><b class="num">130 мл, 1 яйцо</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="design">
+    <div class="wrap">
+      <div class="head">
+        <div class="eyebrow">Дизайн-система</div>
+        <h2>Холодный свет, эмаль и наклейка со сроком</h2>
+        <p class="prose">Визуальный язык взят из самого холодильника: прохладный зеленовато-белый фон, как свет внутри камеры, тёмно-зелёный для текста и навигации, жёлтый желток только для главного действия на экране. Главный узнаваемый элемент&nbsp;— наклейка со сроком годности: моноширинный шрифт, пунктирная рамка, цвет по степени свежести.</p>
+      </div>
+      <div class="sw">
+        <div><i style="background:#EAF0ED"></i><p>Иней<small>#EAF0ED · фон</small></p></div>
+        <div><i style="background:#12231E"></i><p>Хвоя<small>#12231E · текст</small></p></div>
+        <div><i style="background:#1B5C4C"></i><p>Эмаль<small>#1B5C4C · навигация</small></p></div>
+        <div><i style="background:#F4B609"></i><p>Желток<small>#F4B609 · действие</small></p></div>
+        <div><i style="background:#23804F"></i><p>Свежее<small>#23804F</small></p></div>
+        <div><i style="background:#C85F0E"></i><p>Скоро<small>#C85F0E</small></p></div>
+        <div><i style="background:#BF362D"></i><p>Истёк<small>#BF362D</small></p></div>
+      </div>
+      <div class="typo">
+        <div><small>Заголовки · Unbounded</small><span style="font-family:var(--display);font-size:26px;font-weight:700;line-height:1.1">Что приготовить</span><small>Широкий, округлый, как магнит на дверце. Только заголовки экранов и крупные цифры.</small></div>
+        <div><small>Интерфейс · Onest</small><span style="font-size:18px;font-weight:600">Курица с рисом и кабачком</span><small>Хорошая кириллица, спокойный ритм. Весь текст интерфейса.</small></div>
+        <div><small>Данные · JetBrains Mono</small><span style="font-family:var(--mono);font-size:17px;font-weight:600">до 15.09 · 800 г</span><small>Сроки, граммы, цены: всё, что сравнивают по столбцу.</small></div>
+      </div>
+      <div class="principles">
+        <div><b>Срок годности читается раньше названия</b><span>Цвет наклейки считывается периферийным зрением, а название уже подтверждает, что это за продукт.</span></div>
+        <div><b>Желток&nbsp;— одна кнопка на экран</b><span>«Добавить 9 продуктов», «Дальше», «Список покупок». Если на экране два жёлтых элемента, один лишний.</span></div>
+        <div><b>Приблизительное помечается «~»</b><span>Приложение не делает вид, что знает точный срок у кабачка. Честность важнее точности.</span></div>
+        <div><b>Тёмная тема для кухни вечером</b><span>Режим готовки тёмный всегда: меньше бликов, лучше видно с расстояния вытянутой руки.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="iphone">
+    <div class="wrap">
+      <div class="head">
+        <div class="eyebrow">Установка</div>
+        <h2>Как приложение попадёт на iPhone жены</h2>
+        <p class="prose">Публиковать в App Store не нужно, приложение для своей семьи. Вы работаете на Windows, а для классической сборки под iOS нужен Mac. Поэтому есть три пути, и первый здесь явно лучше остальных.</p>
+      </div>
+      <div class="road">
+        <div class="phase now">
+          <span class="tag">Рекомендую · веб-приложение (PWA)</span>
+          <h3>Иконка на экране «Домой»</h3>
+          <ul>
+            <li>Открывается на весь экран, без адресной строки, как обычное приложение</li>
+            <li>Mac, App Store и Apple Developer не нужны, разработка на Windows</li>
+            <li>Хостинг на Vercel бесплатный, обновления приходят сами при следующем запуске</li>
+            <li>Работают камера, пуш-уведомления (iOS 16.4+), общий список в реальном времени</li>
+            <li>Минус: нет виджетов и Siri, камера делает снимок, а не распознаёт на лету</li>
+          </ul>
+        </div>
+        <div class="phase">
+          <span class="tag">Expo + TestFlight</span>
+          <h3>Настоящее нативное приложение</h3>
+          <ul>
+            <li>Сборка в облаке EAS, Mac не нужен</li>
+            <li>Нужен Apple Developer Program, 99 $ в год</li>
+            <li>Устанавливается через приложение TestFlight по приглашению</li>
+            <li>Сборка живёт 90 дней, потом её нужно выпустить заново</li>
+            <li>Имеет смысл, если позже захочется виджет на экране блокировки</li>
+          </ul>
+        </div>
+        <div class="phase">
+          <span class="tag">Swift + Xcode</span>
+          <h3>Не подходит</h3>
+          <ul>
+            <li>Нужен Mac с Xcode</li>
+            <li>С бесплатным Apple ID приложение перестаёт открываться через 7 дней, его приходится переустанавливать с компьютера</li>
+            <li>Код не переиспользуется ни для веба, ни для Android</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="twocol">
+        <div class="panel">
+          <h4>Что сделает жена, один раз</h4>
+          <ol class="steps">
+            <li><div><b>Открыть ссылку в Safari</b><span>Например, <span class="mono">holodilnik.vercel.app</span>. Нужен именно Safari, в других браузерах на iPhone может не быть нужного пункта.</span></div></li>
+            <li><div><b>«Поделиться» → «На экран “Домой”»</b><span>На экране появится иконка с названием «Холодильник».</span></div></li>
+            <li><div><b>Запустить с иконки и войти</b><span>Вход по коду из письма, без пароля. Потом разрешить камеру и уведомления.</span></div></li>
+            <li><div><b>Принять приглашение в дом</b><span>Ваша ссылка-приглашение, после этого холодильник и список покупок общие.</span></div></li>
+          </ol>
+        </div>
+        <div class="side">
+          <div class="note"><b>Уведомления на iPhone</b><span>Пуш-уведомления у веб-приложений работают только после установки на экран «Домой» и запуска с иконки. Если открыть сайт просто в Safari, «сегодня истекает кефир» не придёт.</span></div>
+          <div class="panel">
+            <h4>Во что обойдётся</h4>
+            <div class="inputs">
+              <div class="inp"><small>Хостинг Vercel</small><b>0 ₽</b></div>
+              <div class="inp"><small>База Supabase</small><b>0 ₽</b></div>
+              <div class="inp"><small>Распознавание фото</small><b>за запрос</b></div>
+              <div class="inp"><small>Apple</small><b>0 ₽</b></div>
+            </div>
+            <small style="color:var(--ink-3);font-size:13px">Бесплатных тарифов Vercel и Supabase для двух человек хватит с запасом. Запросы к модели платные, но для одной семьи это небольшие суммы. Месячный лимит расходов задаётся в консоли API.</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="tech">
+    <div class="wrap">
+      <div class="head">
+        <div class="eyebrow">Технологии</div>
+        <h2>Из чего собрать</h2>
+        <p class="prose">Стек рассчитан на одного разработчика на Windows. Всё бесплатно, кроме запросов к модели. Если позже понадобится нативное приложение, React-код и бэкенд почти целиком переедут в Expo.</p>
+      </div>
+      <div class="stack">
+        <div class="st"><b>Клиент</b><span>React + TypeScript + Vite, vite-plugin-pwa для манифеста, иконки и офлайн-кэша. Вёрстка под экран iPhone, с учётом выреза и нижней полоски.</span></div>
+        <div class="st"><b>Хостинг</b><span>Vercel: деплой по пушу в GitHub, серверные функции для запросов к модели, чтобы ключ API не попадал на телефон.</span></div>
+        <div class="st"><b>Данные</b><span>Supabase: Postgres, вход по коду из письма, realtime-синхронизация между вашим телефоном и телефоном жены, хранилище фото.</span></div>
+        <div class="st"><b>Фото полки и чека</b><span>Мультимодальная модель (например, Claude Sonnet 5) по строгой JSON-схеме: продукт, количество, рамка, уверенность.</span></div>
+        <div class="st"><b>Штрихкоды</b><span>Библиотека ZXing в браузере (Safari не поддерживает встроенный BarcodeDetector) и Open Food Facts для названий и КБЖУ.</span></div>
+        <div class="st"><b>Рецепты</b><span>Стартовая база из ~150 блюд, которые вы едите: генерируются моделью в структурированном виде один раз и вычитываются руками.</span></div>
+        <div class="st"><b>Планировщик</b><span>Обычная функция на TypeScript: жадная сборка и локальный поиск. Работает мгновенно, без модели, результат можно объяснить.</span></div>
+        <div class="st"><b>Уведомления</b><span>Web Push и ежедневная задача по расписанию (Vercel Cron): проверка сроков и дней готовки.</span></div>
+      </div>
+<pre class="model"><b>Product</b>        id, name, category, barcode?, default_pack, shelf_life{fridge, freezer, pantry, opened}
+<b>InventoryItem</b>  household_id, product_id, qty, unit, location, purchased_at, opened_at?, expires_at, is_estimate, source{photo|receipt|barcode|voice|leftover}
+<b>Recipe</b>         id, title, time_min, servings, equipment[], steps[], nutrition
+<b>RecipeIngredient</b> recipe_id, product_id, qty, unit, role{key|secondary|staple}, substitutes[{product_id, ratio}]
+<b>Member</b>         household_id, name, kcal_target?, allergies[], dislikes[]
+<b>MealPlan</b>       household_id, start_date, end_date, settings{meals, cook_days, budget, max_time}
+<b>PlanSlot</b>       plan_id, date, meal, recipe_id, portions, locked, leftover_of_slot_id?
+<b>ShoppingItem</b>   plan_id, product_id, qty_needed, pack_qty, for_slots[], checked_by?, price_estimate</pre>
+    </div>
+  </section>
+
+  <section class="block" id="roadmap">
+    <div class="wrap">
+      <div class="head">
+        <div class="eyebrow">План</div>
+        <h2>Этапы запуска</h2>
+      </div>
+      <div class="road">
+        <div class="phase now">
+          <span class="tag">Этап 1 · уже можно ставить жене</span>
+          <h3>Холодильник и рецепты</h3>
+          <ul>
+            <li>PWA на Vercel, иконка на экране «Домой»</li>
+            <li>Вход и общий дом на двоих</li>
+            <li>Скан полки, ручной ввод и диктовка</li>
+            <li>Сроки и шкала свежести</li>
+            <li>Подбор рецептов, режим готовки со списанием продуктов</li>
+          </ul>
+        </div>
+        <div class="phase">
+          <span class="tag">Этап 2</span>
+          <h3>Рацион и покупки</h3>
+          <ul>
+            <li>Планировщик недели с замками и заменами</li>
+            <li>Список покупок с упаковками и бюджетом</li>
+            <li>Отметки в списке в реальном времени</li>
+            <li>Скан чека и штрихкода</li>
+            <li>Уведомления о сроках и днях готовки</li>
+          </ul>
+        </div>
+        <div class="phase">
+          <span class="tag">Этап 3 · если понравится</span>
+          <h3>Шлифовка</h3>
+          <ul>
+            <li>КБЖУ и цели для каждого из вас</li>
+            <li>Статистика отходов и экономии</li>
+            <li>Оценки блюд и обучение подборки</li>
+            <li>При желании перенос в Expo и TestFlight ради виджетов</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="head" style="margin:56px 0 20px">
+        <h2 style="font-size:26px">Что стоит обсудить с женой до начала</h2>
+      </div>
+      <div class="qs">
+        <div><b>Какие блюда вы реально готовите</b><span>Список из 30–50 любимых блюд лучше любой чужой базы рецептов. От него стоит отталкиваться, генерировать остальные уже потом.</span></div>
+        <div><b>Что ей важнее всего</b><span>Не выбрасывать продукты, быстро решать «что на ужин» или ходить в магазин один раз в неделю. С этого и стоит начать первый этап.</span></div>
+        <div><b>Нужны ли калории</b><span>Если никто из вас их не считает, КБЖУ лучше убрать: экраны станут проще, а рецепты не придётся размечать так подробно.</span></div>
+        <div><b>Кто вносит продукты</b><span>Если в магазин обычно ходит один из вас, ему достаточно скана чека, а второму хватит холодильника и рецептов.</span></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">«Что в холодильнике» · концепция v0.2 · все продукты, цены и имена в примерах условные</div>
+</footer>
