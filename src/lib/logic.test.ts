@@ -1,3 +1,4 @@
+import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import type { InventoryItem } from '../data/types';
@@ -225,5 +226,24 @@ describe('рацион на неделю', () => {
     const b0 = regenerated.find((m) => m.id === lockedMeal.id);
     expect(b0?.title).toBe('Мой любимый омлет');
     expect(b0?.locked).toBe(true);
+  });
+
+  it('выгружает недостающие ингредиенты плана в список покупок', async () => {
+    const c = ctx([]);
+    const plan = generateWeekPlan({
+      mondayIso: mon,
+      ctx: c,
+      recipes: BASE_RECIPES,
+      servings: 2,
+    });
+
+    const count = await addWeekPlanToShopping({
+      meals: plan.slice(0, 3), // берем первые 3 приема пищи
+      recipes: BASE_RECIPES,
+      inventoryItems: [],
+      staples: new Set(),
+    });
+
+    expect(count).toBeGreaterThan(0);
   });
 });
