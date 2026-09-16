@@ -144,26 +144,40 @@ export function Spinner() {
 
 // ——— Всплывающие сообщения ———
 
-let toastText: string | null = null;
+interface ToastState { text: string; action?: { label: string; run: () => void } }
+
+let toastState: ToastState | null = null;
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 const toastListeners = new Set<() => void>();
 
-export function toast(text: string) {
-  toastText = text;
+function hideToast() {
+  clearTimeout(toastTimer);
+  toastState = null;
+  toastListeners.forEach((fn) => fn());
+}
+
+/** Короткое сообщение внизу. С действием («Вернуть») держится дольше, чтобы успеть нажать */
+export function toast(text: string, action?: ToastState['action']) {
+  toastState = { text, action };
   toastListeners.forEach((fn) => fn());
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    toastText = null;
-    toastListeners.forEach((fn) => fn());
-  }, 2800);
+  toastTimer = setTimeout(hideToast, action ? 6000 : 2800);
 }
 
 export function ToastHost() {
-  const text = useSyncExternalStore(
+  const state = useSyncExternalStore(
     (fn) => { toastListeners.add(fn); return () => toastListeners.delete(fn); },
-    () => toastText,
+    () => toastState,
   );
-  return text ? <div className="toast" role="status">{text}</div> : null;
+  if (!state) return null;
+  return (
+    <div className="toast" role="status">
+      <span>{state.text}</span>
+      {state.action && (
+        <button type="button" onClick={() => { state.action!.run(); hideToast(); }}>{state.action.label}</button>
+      )}
+    </div>
+  );
 }
 
 export function useOnline(): boolean {

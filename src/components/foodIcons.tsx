@@ -73,6 +73,22 @@ const PRODUCT_GLYPH: Record<string, ProductGlyph> = {
   sausages: 'sausage', ham: 'sausage', salami: 'sausage', bacon: 'sausage',
   shrimp: 'shrimp', dumplings: 'dumpling', flour: 'flour', honey: 'honey', pasta: 'pasta',
   vegetable_oil: 'bottle', olive_oil: 'bottle', lavash: 'bread', tuna_canned: 'can',
+  red_onion: 'onion', leek: 'onion', radish: 'tomato', daikon: 'potato', celery_root: 'potato', sweet_potato: 'potato', ginger: 'potato',
+  cherry_tomato: 'tomato', chinese_cabbage: 'cabbage', red_cabbage: 'cabbage', brussels_sprouts: 'cabbage', green_beans: 'cucumber',
+  chili: 'pepper', oyster_mushrooms: 'mushroom', forest_mushrooms: 'mushroom', pickled_mushrooms: 'mushroom', pickles: 'cucumber',
+  sauerkraut: 'cabbage', squash_caviar: 'jar', pear: 'apple', grapes: 'apple', tangerine: 'citrus', grapefruit: 'citrus', lime: 'citrus',
+  ryazhenka: 'carton', ayran: 'carton', drinking_yogurt: 'carton', plant_milk: 'carton', fruit_yogurt: 'cup', grain_cottage: 'cup',
+  mascarpone: 'cup', curd_snack: 'chocolate', parmesan: 'cheese', suluguni: 'cheese', adyghe_cheese: 'cheese', processed_cheese: 'cheese',
+  ghee: 'butter', quail_egg: 'egg', smoked_sausage: 'sausage', chicken_wings: 'drumstick', turkey: 'drumstick', roast_chicken: 'drumstick',
+  squid: 'shrimp', mussels: 'shrimp', crab_sticks: 'sausage', red_caviar: 'jar', herring: 'fish', salted_salmon: 'fish', mackerel: 'fish',
+  sprats: 'can', saury_canned: 'can', cod_liver: 'can', stew_canned: 'can', coconut_milk: 'can', canned_pineapple: 'can', olives: 'can',
+  condensed_milk: 'can', fish_sticks: 'fish', noodles: 'pasta', vermicelli: 'pasta', lasagna_sheets: 'pasta',
+  breadcrumbs: 'flour', starch: 'flour', powdered_sugar: 'flour', puff_pastry: 'flour', yeast_dough: 'flour',
+  loaf: 'bread', rye_bread: 'bread', toast_bread: 'bread', buns: 'bread', crispbread: 'bread', tortilla: 'bread', pirozhki: 'bread',
+  pesto: 'jar', adjika: 'jar', tahini: 'jar', hummus: 'jar', pasta_sauce: 'jar', cocoa: 'jar', tea: 'jar', coffee: 'jar', yeast: 'jar',
+  vareniki: 'dumpling', frozen_blini: 'dumpling', blini: 'dumpling', french_fries: 'potato', frozen_broccoli: 'broccoli',
+  jam: 'honey', choco_spread: 'honey', ready_soup: 'cup',
+  kvass: 'bottle', mors: 'bottle', cooking_wine: 'bottle', balsamic: 'bottle', sesame_oil: 'bottle',
 };
 
 export const CATEGORY_COLOR: Record<string, string> = {

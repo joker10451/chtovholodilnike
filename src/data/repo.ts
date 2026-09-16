@@ -35,6 +35,16 @@ export async function deleteRecords(ids: string[]): Promise<void> {
   });
 }
 
+/** Возвращает удалённые записи — для кнопки «Вернуть» */
+export async function restoreRecords(ids: string[]): Promise<void> {
+  const now = Date.now();
+  await db.transaction('rw', db.records, async () => {
+    for (const id of ids) {
+      await db.records.update(id, { deleted: 0, dirty: 1, updatedAt: now });
+    }
+  });
+}
+
 async function liveOf<T>(kind: RecordKind): Promise<T[]> {
   const rows = (await db.records.where('kind').equals(kind).toArray()) as SyncRecord<T>[];
   return rows.filter((r) => !r.deleted).map((r) => r.data);

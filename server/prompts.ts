@@ -2,7 +2,8 @@ import { CATEGORY_LABELS, PRODUCTS } from '../src/shared/products.js';
 import type { AiRequest } from '../src/shared/aiSchemas.js';
 
 // Справочник стабилен между запросами — держим его в начале системной подсказки.
-const DICTIONARY = PRODUCTS.map((p) => `${p.key} — ${p.name}${p.aliases.length ? ` (${p.aliases.join(', ')})` : ''}`).join('\n');
+// Он большой, поэтому из синонимов берём только первые два, чтобы запросы оставались короткими.
+const DICTIONARY = PRODUCTS.map((p) => `${p.key} — ${p.name}${p.aliases.length ? ` (${p.aliases.slice(0, 2).join(', ')})` : ''}`).join('\n');
 const CATEGORIES = Object.entries(CATEGORY_LABELS).map(([k, v]) => `${k} — ${v}`).join(', ');
 
 const BASE = `Ты помощник семейного приложения «Что в холодильнике». Пишешь по-русски, коротко и по делу.

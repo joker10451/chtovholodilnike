@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Sheet, Stepper, toast, useToday } from '../components/ui';
-import { finishItem, saveItem } from '../data/repo';
+import { IconTrash } from '../components/icons';
+import { deleteRecords, finishItem, restoreRecords, saveItem } from '../data/repo';
 import type { InventoryItem } from '../data/types';
 import { daysLeft, estimateExpiry } from '../shared/freshness';
 import { getProduct, LOCATION_LABELS, LOCATIONS, type Location } from '../shared/products';
@@ -42,6 +43,14 @@ export function ItemSheet({ item, onClose }: { item: InventoryItem | null; onClo
   const left = daysLeft(item.expiresAt, today);
   const mayBeWasted = left !== null && left <= 0;
 
+  /** Добавили по ошибке — просто убираем, без вопроса и без записи в итоги */
+  async function remove() {
+    const { id, name } = item!;
+    await deleteRecords([id]);
+    toast(`«${name}» удалено`, { label: 'Вернуть', run: () => void restoreRecords([id]) });
+    onClose();
+  }
+
   async function finish(wasted = false) {
     await finishItem(item!, wasted);
     toast(wasted ? `${item!.name}: записали в выброшенное` : `${item!.name}: закончилось`);
@@ -49,7 +58,29 @@ export function ItemSheet({ item, onClose }: { item: InventoryItem | null; onClo
   }
 
   return (
-    <Sheet open onClose={onClose} title={item.name}>
+    <Sheet
+      open
+      onClose={onClose}
+      title={item.name}
+      footer={asking ? (
+        <div className="stack" style={{ flex: 1 }}>
+          <b>Съели или пришлось выбросить?</b>
+          <div className="row-gap">
+            <button className="btn ghost" onClick={() => void finish(false)}>Съели</button>
+            <button className="btn danger" onClick={() => void finish(true)}>Выбросили</button>
+          </div>
+          <button className="btn quiet" onClick={() => setAsking(false)}>Назад</button>
+        </div>
+      ) : (
+        <div className="stack" style={{ flex: 1 }}>
+          <button className="btn primary block" onClick={save}>Сохранить</button>
+          <div className="row-gap">
+            <button className="btn ghost" onClick={() => (mayBeWasted ? setAsking(true) : void finish())}>Закончилось</button>
+            <button className="btn ghost delete" onClick={() => void remove()}><IconTrash /> Удалить</button>
+          </div>
+        </div>
+      )}
+    >
       <div className="stack-lg">
         <label className="field">
           <span>Название</span>
@@ -141,20 +172,6 @@ export function ItemSheet({ item, onClose }: { item: InventoryItem | null; onClo
           <p className="small muted">После вскрытия {product.name.toLowerCase()} хранится около {product.opened} дн. — срок пересчитан.</p>
         )}
 
-        {asking ? (
-          <div className="sheet-footer" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
-            <b>Съели или пришлось выбросить?</b>
-            <div className="row-gap">
-              <button className="btn ghost" onClick={() => void finish(false)}>Съели</button>
-              <button className="btn danger" onClick={() => void finish(true)}>Выбросили</button>
-            </div>
-          </div>
-        ) : (
-          <div className="sheet-footer">
-            <button className="btn danger" style={{ flex: 1 }} onClick={() => (mayBeWasted ? setAsking(true) : void finish())}>Закончилось</button>
-            <button className="btn primary" style={{ flex: 2 }} onClick={save}>Сохранить</button>
-          </div>
-        )}
       </div>
     </Sheet>
   );

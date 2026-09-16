@@ -243,6 +243,8 @@ describe('рацион на неделю', () => {
       recipes: BASE_RECIPES,
       inventoryItems: [],
       staples: new Set(),
+      // Прошедшие дни в покупки не идут — считаем «сегодня» понедельником недели плана
+      today: mon,
     });
 
     expect(count).toBeGreaterThan(0);

@@ -209,8 +209,14 @@ button.chip.on { background: var(--brand-soft); border-color: var(--brand); colo
   bottom: calc(var(--tabbar) + var(--safe-bottom) + 14px);
   background: var(--ink); color: var(--ground); padding: 11px 16px; border-radius: 12px;
   font-size: 14px; max-width: calc(100% - 32px); box-shadow: 0 10px 24px -12px var(--shadow);
-  animation: rise .2s ease-out;
+  animation: rise .2s ease-out; display: flex; align-items: center; gap: 14px;
 }
+.toast button {
+  border: 0; background: none; color: var(--yolk); font: inherit; font-weight: 700;
+  padding: 6px 2px; margin: -6px 0; white-space: nowrap; cursor: pointer;
+}
+.sheet-footer.stacked { flex-direction: column; align-items: stretch; }
+.sheet-footer .btn.delete { color: var(--bad); }
 
 /* ——— Скан ——— */
 .shots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
