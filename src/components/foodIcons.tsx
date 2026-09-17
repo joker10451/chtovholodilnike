@@ -89,6 +89,16 @@ const PRODUCT_GLYPH: Record<string, ProductGlyph> = {
   vareniki: 'dumpling', frozen_blini: 'dumpling', blini: 'dumpling', french_fries: 'potato', frozen_broccoli: 'broccoli',
   jam: 'honey', choco_spread: 'honey', ready_soup: 'cup',
   kvass: 'bottle', mors: 'bottle', cooking_wine: 'bottle', balsamic: 'bottle', sesame_oil: 'bottle',
+  pork_ribs: 'steak', lamb: 'steak', beef_liver: 'steak', salo: 'butter',
+  chicken_liver: 'drumstick', chicken_hearts: 'drumstick',
+  frozen_cutlets: 'steak', frozen_pizza: 'bread',
+  ice_cream: 'cup', cookies: 'bread', cake: 'bread', candies: 'chocolate', marshmallow: 'chocolate', halva: 'chocolate',
+  ketchup: 'bottle', mustard: 'bottle', teriyaki: 'bottle', hot_sauce: 'bottle', soy_sauce: 'bottle',
+  ready_salad: 'leaf', sushi: 'fish',
+  dry_beans: 'nut', dry_chickpeas: 'nut', split_peas: 'nut', sesame: 'nut', seeds: 'nut',
+  asparagus: 'cucumber', celery: 'cucumber',
+  strawberry: 'apple', raspberry: 'apple', cherry: 'apple', blueberry: 'apple',
+  cinnamon: 'shaker', vanilla_sugar: 'shaker', soda: 'shaker', gelatin: 'shaker',
 };
 
 export const CATEGORY_COLOR: Record<string, string> = {
@@ -145,24 +155,23 @@ const DISH_GLYPHS: Record<DishKind, ReactNode> = {
 };
 
 const KIND_RULES: [RegExp, DishKind][] = [
-  [/суп|борщ|\bщи\b|солянк|\bуха\b|бульон|окрошк|рассольник/, 'soup'],
-  [/салат|цезарь|винегрет/, 'salad'],
-  [/пицц/, 'pizza'],
-  [/пельмен|вареник|манты|хинкал/, 'dumplings'],
-  [/плов/, 'pot'],
-  [/оладь|панкейк|блин|сырник|вафл/, 'pancakes'],
-  [/гренк|тост|бутерброд|сэндвич|брускет/, 'toast'],
-  [/омлет|яичниц|шакшук|яйц|фриттат/, 'eggs'],
-  [/каш|овсян|гранол|мюсли/, 'porridge'],
-  [/паст|макарон|спагетти|лапш|феттучин/, 'pasta'],
-  [/треск|лосос|рыб|форел|сёмг|семг|минта|скумбр|тунц|кревет|судак|горбуш/, 'fish'],
-  [/котлет|тефтел|биточ|фрикадел/, 'cutlets'],
-  [/куриц|курин|индейк|окорочк|цыпл/, 'chicken'],
-  [/запеканк|запеч|лазань|гратен|пирог|киш/, 'baked'],
-  [/пюре/, 'mash'],
-  [/картош|картофел|драник/, 'fried'],
-  [/плов|гречк|рис\b|ризотто|рагу|голубц|тушен|жарк|гуляш|чечевиц|нут|перлов|булгур|чили/, 'pot'],
-  [/смузи|коктейл|лимонад|морс|компот|мохито|\bчай\b|кофе|какао|фреш/, 'drink'],
+  [/суп|борщ|(^|[^а-яё])щи([^а-яё]|$)|солянк|(^|[^а-яё])ух[аеи]([^а-яё]|$)|бульон|окрошк|рассольник|харчо/i, 'soup'],
+  [/салат|цезарь|винегрет|капрезе|оливье|мимоз/i, 'salad'],
+  [/пицц/i, 'pizza'],
+  [/пельмен|вареник|манты|хинкал/i, 'dumplings'],
+  [/оладь|панкейк|блин|сырник|вафл|пончик|хачапур/i, 'pancakes'],
+  [/гренк|тост|бутерброд|сэндвич|брускет|кесадиль|намазк/i, 'toast'],
+  [/омлет|яичниц|шакшук|яйц|фриттат|менемен/i, 'eggs'],
+  [/каш|овсян|гранол|мюсли/i, 'porridge'],
+  [/паст|макарон|спагетти|лапш|феттучин/i, 'pasta'],
+  [/треск|лосос|рыб|форел|с[её]мг|минта|скумбр|тунц|кревет|судак|горбуш|миди|кальмар|шпрот/i, 'fish'],
+  [/котлет|тефтел|биточ|фрикадел|отбивн/i, 'cutlets'],
+  [/куриц|курин|индейк|окорочк|цыпл|крылыш|чахохбили/i, 'chicken'],
+  [/запеканк|запеч|лазань|гратен|пирог|киш|шарлотк|слойк|кекс|печен|печ[её]н|сло[её]н|в тесте|в духовке/i, 'baked'],
+  [/пюре/i, 'mash'],
+  [/картош|картофел|драник/i, 'fried'],
+  [/плов|гречк|рис\b|ризотто|рагу|голубц|туш[её]н|жарк|гуляш|чечевиц|нут|перлов|булгур|чили|лобио|кускус|киноа|фахитас|бефстроганов|рулет|баклажан|капуст/i, 'pot'],
+  [/смузи|коктейл|лимонад|морс|компот|мохито|\bчай\b|кофе|какао|фреш/i, 'drink'],
 ];
 
 export function dishKind(recipe: Pick<Recipe, 'title' | 'tags' | 'ingredients'>): DishKind {
