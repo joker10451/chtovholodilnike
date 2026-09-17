@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { IconMore, IconPlus } from '../components/icons';
 import { ProductIcon } from '../components/foodIcons';
-import { Empty, Header, Segmented, Sticker, useToday } from '../components/ui';
-import { useItems } from '../data/repo';
+import { Empty, Header, Segmented, Sticker, toast, useToday } from '../components/ui';
+import { addShoppingItems, finishItem, restoreRecords, useItems } from '../data/repo';
 import type { InventoryItem } from '../data/types';
+import { SwipeRow } from '../components/SwipeRow';
 import { go, href, useRoute } from '../router';
 import { daysLeft, RESCUE_DAYS } from '../shared/freshness';
 import { LOCATION_LABELS, type Location } from '../shared/products';
@@ -44,6 +45,27 @@ export function Fridge() {
     return left !== null && left <= RESCUE_DAYS;
   });
   const count = (loc: Location) => sorted.filter((i) => i.location === loc).length;
+
+  async function handleEat(item: InventoryItem) {
+    await finishItem(item, false);
+    toast(`«${item.name}» съедено`, {
+      label: 'Вернуть',
+      run: () => void restoreRecords([item.id]),
+    });
+  }
+
+  async function handleAddShopping(item: InventoryItem) {
+    await addShoppingItems([
+      {
+        name: item.name,
+        productKey: item.productKey,
+        category: item.category,
+        qty: item.qty,
+        unit: item.unit,
+      },
+    ]);
+    toast(`«${item.name}» добавлено в покупки`);
+  }
 
   return (
     <main className="screen">
@@ -96,20 +118,29 @@ export function Fridge() {
         <div className="stack" style={{ gap: 10 }}>
           <div className="list">
             {visible.map((item) => (
-              <button key={item.id} className="item-row" onClick={() => setEditing(item)}>
-                <ProductIcon productKey={item.productKey} category={item.category} />
-                <span className="nm">
-                  <b>{item.name}</b>
-                  <small className="num">
-                    {formatQty(item.qty, item.unit)}
-                    {item.openedAt ? ' · открыт' : ''}
-                    {filter === 'all' && item.location !== 'fridge' ? ` · ${LOCATION_LABELS[item.location].toLowerCase()}` : ''}
-                  </small>
-                </span>
-                <Sticker expiresAt={item.expiresAt} isEstimate={item.isEstimate} today={today} />
-              </button>
+              <SwipeRow
+                key={item.id}
+                onEat={() => void handleEat(item)}
+                onAddShopping={() => void handleAddShopping(item)}
+                onClick={() => setEditing(item)}
+              >
+                <div className="item-row">
+                  <ProductIcon productKey={item.productKey} category={item.category} />
+                  <span className="nm">
+                    <b>{item.name}</b>
+                    <small className="num">
+                      {formatQty(item.qty, item.unit)}
+                      {item.openedAt ? ' · открыт' : ''}
+                      {filter === 'all' && item.location !== 'fridge' ? ` · ${LOCATION_LABELS[item.location].toLowerCase()}` : ''}
+                    </small>
+                  </span>
+                  <Sticker expiresAt={item.expiresAt} isEstimate={item.isEstimate} today={today} />
+                </div>
+              </SwipeRow>
             ))}
           </div>
+
+          <div className="swipe-tip">💡 Свайп вправо — съели · влево — в покупки</div>
 
           <button
             type="button"

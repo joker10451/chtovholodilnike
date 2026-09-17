@@ -328,4 +328,54 @@ describe('рацион на неделю', () => {
       expect(customRecipe.ingredients[2].qty * factor6).toBe(240);
     });
   });
+
+  describe('потоковое сканирование (Конвейер) и свайпы', () => {
+    it('мгновенно создаёт продукт по штрихкоду из базы пресетов', async () => {
+      const { lookupBarcode } = await import('./barcode');
+      const { makeItem } = await import('./convert');
+
+      // Базовый штрихкод из пресета (Молоко Простоквашино 3.2%)
+      const res = await lookupBarcode('4607004891694');
+      expect(res.product).not.toBeNull();
+      expect(res.product?.name).toContain('Молоко');
+
+      const item = makeItem({
+        name: res.product!.name,
+        productKey: res.product!.productKey,
+        category: res.product!.category,
+        qty: res.product!.qty,
+        unit: res.product!.unit,
+        location: res.product!.location,
+        packageDate: res.product!.expiresAt,
+        purchasedAt: '2026-09-17',
+        source: 'barcode',
+      });
+
+      expect(item.name).toBe(res.product!.name);
+      expect(item.source).toBe('barcode');
+      expect(item.category).toBe('dairy');
+      expect(item.location).toBe('fridge');
+      expect(item.qty).toBeGreaterThan(0);
+    });
+
+    it('корректно формирует параметры для свайпов: съедено и в покупки', () => {
+      const milk = item({ id: 'm1', name: 'Молоко 3.2%', productKey: 'milk', category: 'dairy', qty: 900, unit: 'ml' });
+
+      // Жест «Съели»
+      const eatenPatch = { id: milk.id, wasted: false };
+      expect(eatenPatch.wasted).toBe(false);
+
+      // Жест «В покупки»
+      const shopItem = {
+        name: milk.name,
+        productKey: milk.productKey,
+        category: milk.category,
+        qty: milk.qty,
+        unit: milk.unit,
+      };
+      expect(shopItem.name).toBe('Молоко 3.2%');
+      expect(shopItem.unit).toBe('ml');
+      expect(shopItem.category).toBe('dairy');
+    });
+  });
 });

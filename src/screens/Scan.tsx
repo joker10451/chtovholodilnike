@@ -54,6 +54,38 @@ interface Added {
 }
 
 const MODE_KEY = 'holodilnik:scan-mode';
+const STREAM_KEY = 'holodilnik:stream-scan';
+
+function playScanBeep(success = true) {
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    if (success) {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.11);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.13);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.14);
+    } else {
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(260, ctx.currentTime);
+      osc.frequency.setValueAtTime(220, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.14, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.22);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.24);
+    }
+  } catch {
+    /* аудио может быть заблокировано до жеста пользователя */
+  }
+}
 
 function cardError(e: unknown): CardError {
   if (e instanceof OfflineError) return { message: 'Нет интернета — упаковку прочитать не получится. Заполните карточку вручную или повторите позже.' };
@@ -71,6 +103,20 @@ export function Scan() {
   const [mode, setModeState] = useState<Mode>(() => {
     try { return (localStorage.getItem(MODE_KEY) as Mode) || 'barcode'; } catch { return 'barcode'; }
   });
+  const [streamMode, setStreamModeState] = useState<boolean>(() => {
+    try { return localStorage.getItem(STREAM_KEY) === '1'; } catch { return false; }
+  });
+  const [streamToast, setStreamToast] = useState<{ item?: Added; unknownCode?: string; message: string } | null>(null);
+  const lastScanRef = useRef<{ code: string; time: number }>({ code: '', time: 0 });
+
+  function setStreamMode(val: boolean | ((prev: boolean) => boolean)) {
+    setStreamModeState((prev) => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      try { localStorage.setItem(STREAM_KEY, next ? '1' : '0'); } catch { /* приватный режим */ }
+      return next;
+    });
+  }
+
   const [flow, setFlow] = useState<Flow>({ step: 'scan' });
   const [shots, setShots] = useState<Blob[]>([]);
   const [session, setSession] = useState<Added[]>([]);
@@ -104,6 +150,58 @@ export function Scan() {
     setZoom(wanted);
   }, [mode, flow.step, zoomRange, setZoom]);
 
+  useEffect(() => {
+    if (!streamToast) return;
+    const t = setTimeout(() => setStreamToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [streamToast]);
+
+  async function handleStreamBarcode(code: string) {
+    setFlash(true);
+    setTimeout(() => setFlash(false), 180);
+
+    const { product } = await lookupBarcode(code);
+    if (product) {
+      playScanBeep(true);
+      navigator.vibrate?.([50, 40, 50]);
+
+      const item = makeItem({
+        name: product.name,
+        productKey: product.productKey,
+        category: product.category,
+        qty: product.qty || 1,
+        unit: product.unit || 'pcs',
+        location: product.location || 'fridge',
+        packageDate: product.expiresAt,
+        purchasedAt: today,
+        source: 'barcode',
+        nutriments: product.nutriments ?? undefined,
+      });
+
+      await saveItems([item]);
+      await rememberProduct(product);
+
+      const detail = [
+        formatQty(item.qty, item.unit),
+        item.expiresAt ? `${item.isEstimate ? '~' : 'до '}${shortDate(item.expiresAt)}` : null,
+      ].filter(Boolean).join(' · ');
+
+      const added: Added = { key: item.id, name: item.name, detail, to: 'fridge', itemId: item.id };
+      setSession((s) => [added, ...s]);
+      setStreamToast({
+        item: added,
+        message: `В холодильнике: ${item.name}`,
+      });
+    } else {
+      playScanBeep(false);
+      navigator.vibrate?.([80, 50, 80]);
+      setStreamToast({
+        unknownCode: code,
+        message: `Штрихкод ${code} не найден в базе`,
+      });
+    }
+  }
+
   // Непрерывный поиск штрихкода в центральной полосе кадра
   const { grabBand, status, capture } = cam;
   useEffect(() => {
@@ -120,10 +218,24 @@ export function Scan() {
           const codes = await detectCodes(canvas);
           if (stopped) return;
           if (codes.length) {
-            // Кадр со штрихкодом сохраняем: если товара нет в базах, нейросеть прочитает упаковку с него
+            const code = codes[0].value;
+            const now = Date.now();
+            if (code === lastScanRef.current.code && now - lastScanRef.current.time < 2500) {
+              timer = setTimeout(tick, 120);
+              return;
+            }
+
+            if (streamMode) {
+              lastScanRef.current = { code, time: now };
+              await handleStreamBarcode(code);
+              timer = setTimeout(tick, 450);
+              return;
+            }
+
+            // Одиночный режим: снимок и открытие карточки
             const frame = await capture(1600).catch(() => null);
             if (stopped) return;
-            void openCode(codes[0].value, frame);
+            void openCode(code, frame);
             return;
           }
         }
@@ -133,9 +245,10 @@ export function Scan() {
     };
     timer = setTimeout(tick, 250);
     return () => { stopped = true; clearTimeout(timer); };
-  }, [mode, flow.step, status, grabBand, capture]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mode, flow.step, status, grabBand, capture, streamMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function openCode(code: string, photo: Blob | null) {
+    playScanBeep(true);
     navigator.vibrate?.(40);
     setFlash(true);
     setTimeout(() => setFlash(false), 220);
@@ -300,7 +413,13 @@ export function Scan() {
   const reticle = capturing ? 'tall' : mode === 'barcode' ? 'wide' : mode === 'package' ? 'tall' : mode === 'receipt' ? 'receipt' : null;
   const hint = capturing
     ? null
-    : mode === 'barcode' && slowHint ? 'Не читается? Отодвиньте телефон на 15–20 см или нажмите кнопку съёмки — нейросеть прочитает упаковку' : HINTS[mode];
+    : mode === 'barcode'
+      ? streamMode
+        ? '⚡ Режим конвейера: подносите товары один за другим'
+        : slowHint
+          ? 'Не читается? Отодвиньте телефон на 15–20 см или нажмите кнопку съёмки — нейросеть прочитает упаковку'
+          : HINTS[mode]
+      : HINTS[mode];
   const inFridge = session.filter((a) => a.to === 'fridge').length;
 
   return (
@@ -310,6 +429,16 @@ export function Scan() {
 
       <header className="cam-top">
         <a className="cam-round" href={href('fridge')} aria-label="Закрыть"><IconClose /></a>
+        {mode === 'barcode' && flow.step === 'scan' && (
+          <button
+            type="button"
+            className={`cam-pill stream-badge${streamMode ? ' hot' : ''}`}
+            onClick={() => setStreamMode((m) => !m)}
+            title="Конвейер: сканирование товаров подряд без пауз"
+          >
+            ⚡ Конвейер {streamMode ? 'ВКЛ' : 'ВЫКЛ'}
+          </button>
+        )}
         {session.length > 0 && (
           <button className="cam-pill hot" onClick={() => setSessionOpen(true)}>
             Добавлено {session.length} · Итог
@@ -372,6 +501,39 @@ export function Scan() {
       {mode === 'voice' && <div className="cam-panel"><VoiceScanner /></div>}
 
       {flow.step === 'lookup' && <div className="cam-toast"><Spinner /> {flow.message}</div>}
+
+      {streamToast && (
+        <div className={`cam-stream-toast${streamToast.unknownCode ? ' unknown' : ''}`}>
+          <div className="cam-stream-msg">
+            <b>{streamToast.item ? streamToast.item.name : streamToast.message}</b>
+            <small>{streamToast.item ? streamToast.item.detail : 'Нажмите «Заполнить» для ввода'}</small>
+          </div>
+          {streamToast.item ? (
+            <button
+              type="button"
+              className="cam-stream-action undo"
+              onClick={() => {
+                if (streamToast.item) void undo(streamToast.item);
+                setStreamToast(null);
+              }}
+            >
+              Отмена
+            </button>
+          ) : streamToast.unknownCode ? (
+            <button
+              type="button"
+              className="cam-stream-action edit"
+              onClick={() => {
+                const code = streamToast.unknownCode!;
+                setStreamToast(null);
+                void openCode(code, null);
+              }}
+            >
+              Заполнить
+            </button>
+          ) : null}
+        </div>
+      )}
 
       {flow.step !== 'card' && (
         <footer className="cam-bottom">
