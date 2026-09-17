@@ -1,26 +1,6 @@
-import type { Ingredient, Recipe, Step, Substitute } from './recipeTypes.js';
-import type { RecipeUnit } from './units.js';
-
-const MIN = 60;
-
-function key(k: string, qty: number, unit: RecipeUnit, subs?: Substitute[], name?: string): Ingredient {
-  return { key: k, qty, unit, role: 'key', subs, name };
-}
-function sec(k: string, qty: number, unit: RecipeUnit, subs?: Substitute[], name?: string): Ingredient {
-  return { key: k, qty, unit, role: 'secondary', subs, name };
-}
-function basic(k: string, qty = 0, unit: RecipeUnit = 'pinch'): Ingredient {
-  return { key: k, qty, unit, role: 'basic' };
-}
-function st(text: string, timerMin?: number): Step {
-  return timerMin ? { text, timer: Math.round(timerMin * MIN) } : { text };
-}
-
-type Meta = Pick<Recipe, 'time' | 'servings' | 'tags' | 'color'> & { kcal?: number };
-
-function r(id: string, title: string, meta: Meta, ingredients: Ingredient[], steps: Step[]): Recipe {
-  return { id, title, ...meta, ingredients, steps, source: 'base' };
-}
+import type { Recipe } from './recipeTypes.js';
+import { key, sec, basic, st, r } from './recipeHelpers.js';
+import { EXTENDED_RECIPES } from './recipesExtended.js';
 
 export const BASE_RECIPES: Recipe[] = [
   r('chicken-rice-zucchini', 'Курица с рисом и кабачком', { time: 40, servings: 4, kcal: 520, tags: ['ужин', 'впрок'], color: '#C9793A' }, [
@@ -511,4 +491,5 @@ export const BASE_RECIPES: Recipe[] = [
     st('Аккуратно разомните мадлером или ложкой прямо в бокале.'),
     st('Засыпьте лед до верха и залейте газированной водой.'),
   ]),
+  ...EXTENDED_RECIPES,
 ];

@@ -203,8 +203,8 @@ export function generateWeekPlan({
         let score = 0.45 * usage.coverage
           + 0.25 * Math.min(2, usage.rescued.length)
           + 0.08 * Math.min(2, usage.overlap)
-          + 0.4 * (taste - 0.5)
-          - 0.05 * usage.missing;
+          + 0.8 * (taste - 0.5)
+          - 0.03 * Math.min(6, usage.missing);
         if (used.has(r.id)) score -= 1;
         if (makesBatch) score += 0.2;
         if (slot !== 'breakfast' && !cookDay && r.time > ctx.timeLimit) score -= 0.25;
