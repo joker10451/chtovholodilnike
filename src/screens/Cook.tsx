@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { RatingPicker } from '../components/RatingPicker';
 import type { Rating } from '../lib/taste';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { IconClose } from '../components/icons';
 import { Header, Sheet, Stepper, toast } from '../components/ui';
 import { newId } from '../data/db';
 import { deleteRecords, getRecipe, logCooking, saveItems } from '../data/repo';
@@ -11,13 +12,16 @@ import { makeItem } from '../lib/convert';
 import { go, href } from '../router';
 import { todayISO } from '../shared/dates';
 import { daysLeft, RESCUE_DAYS } from '../shared/freshness';
+import { getProduct } from '../shared/products';
 import { formatQty } from '../shared/units';
+import { plural } from './Fridge';
 
 export function Cook({ id, portions }: { id: string; portions: number }) {
   const recipe = useLiveQuery(() => getRecipe(id).then((r) => r ?? null), [id]);
   const [step, setStep] = useState(0);
   const [finishing, setFinishing] = useState(false);
-  useWakeLock(!finishing);
+  const [showIngredients, setShowIngredients] = useState(false);
+  const wakeLockActive = useWakeLock(!finishing);
 
   if (recipe === undefined) return <div className="cook" />;
   if (recipe === null) return <main className="screen"><Header title="Рецепт не найден" backTo="#/recipes" /></main>;
@@ -28,22 +32,68 @@ export function Cook({ id, portions }: { id: string; portions: number }) {
 
   return (
     <div className="cook">
-      <div className="bar">{recipe.steps.map((_, i) => <i key={i} className={i <= step ? 'on' : ''} />)}</div>
-      <div className="top">
-        <span>Шаг {step + 1} из {total} · {recipe.title}</span>
-        <button onClick={() => go(href('recipe', recipe.id), true)}>Закрыть</button>
+      <div className="cook-bar">
+        {recipe.steps.map((_, i) => <i key={i} className={i <= step ? 'on' : ''} />)}
       </div>
 
-      <button className="tap" onClick={next} aria-label="Следующий шаг">
-        <p className="text">{current.text}</p>
+      <div className="cook-top">
+        <div className="cook-top-title">
+          <b>{recipe.title}</b>
+          <span>Шаг {step + 1} из {total} · {portions} {plural(portions, 'порция', 'порции', 'порций')}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {wakeLockActive && <span className="cook-wakelock">☀️ Не гаснет</span>}
+          <button type="button" className="btn small quiet" onClick={() => setShowIngredients(true)}>
+            Ингредиенты
+          </button>
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => go(href('recipe', recipe.id), true)}
+            aria-label="Закрыть режим готовки"
+          >
+            <IconClose width={18} height={18} />
+          </button>
+        </div>
+      </div>
+
+      <button className="cook-tap" onClick={next} aria-label="Следующий шаг">
+        <p className="cook-text">{current.text}</p>
       </button>
-      {current.timer && <Timer key={step} seconds={current.timer} />}
-      <p className="hint">Коснитесь текста — следующий шаг</p>
 
-      <div className="nav" style={{ marginTop: 14 }}>
-        <button className="prev" disabled={step === 0} onClick={() => setStep(Math.max(0, step - 1))}>Назад</button>
-        <button className="next" onClick={next}>{step < total - 1 ? 'Дальше' : 'Готово'}</button>
+      {current.timer && <Timer key={step} seconds={current.timer} />}
+      <p className="cook-hint">Коснитесь карточки — следующий шаг</p>
+
+      <div className="cook-nav">
+        <button className="btn ghost prev" disabled={step === 0} onClick={() => setStep(Math.max(0, step - 1))}>
+          Назад
+        </button>
+        <button className="btn next" onClick={next}>
+          {step < total - 1 ? 'Дальше' : 'Готово'}
+        </button>
       </div>
+
+      <Sheet
+        open={showIngredients}
+        onClose={() => setShowIngredients(false)}
+        title={`Ингредиенты на ${portions} ${plural(portions, 'порцию', 'порции', 'порций')}`}
+      >
+        <div className="list">
+          {recipe.ingredients.map((ing, idx) => {
+            const factor = portions / recipe.servings;
+            const name = ing.name ?? getProduct(ing.key)?.name ?? 'Ингредиент';
+            return (
+              <div key={idx} className="ing" style={{ padding: '10px 4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="nm"><b>{name}</b></span>
+                <span className="mono bold">{formatQty(ing.qty * factor, ing.unit)}</span>
+              </div>
+            );
+          })}
+        </div>
+        <button className="btn block" style={{ marginTop: 12 }} onClick={() => setShowIngredients(false)}>
+          Понятно, к готовке
+        </button>
+      </Sheet>
 
       <FinishSheet open={finishing} onClose={() => setFinishing(false)} recipeId={recipe.id} portions={portions} />
     </div>
@@ -51,9 +101,16 @@ export function Cook({ id, portions }: { id: string; portions: number }) {
 }
 
 function Timer({ seconds }: { seconds: number }) {
+  const [totalSec, setTotalSec] = useState(seconds);
   const [left, setLeft] = useState(seconds);
   const [running, setRunning] = useState(false);
   const endAt = useRef(0);
+
+  useEffect(() => {
+    setTotalSec(seconds);
+    setLeft(seconds);
+    setRunning(false);
+  }, [seconds]);
 
   useEffect(() => {
     if (!running) return;
@@ -62,7 +119,7 @@ function Timer({ seconds }: { seconds: number }) {
       setLeft(l);
       if (l === 0) {
         setRunning(false);
-        navigator.vibrate?.([300, 150, 300]);
+        navigator.vibrate?.([300, 150, 300, 150, 300]);
         beep();
       }
     }, 250);
@@ -72,18 +129,54 @@ function Timer({ seconds }: { seconds: number }) {
   const toggle = () => {
     if (running) setRunning(false);
     else {
-      endAt.current = Date.now() + (left === 0 ? seconds : left) * 1000;
-      if (left === 0) setLeft(seconds);
+      endAt.current = Date.now() + (left === 0 ? totalSec : left) * 1000;
+      if (left === 0) setLeft(totalSec);
       setRunning(true);
     }
   };
+
+  const addMinute = () => {
+    setTotalSec((t) => t + 60);
+    setLeft((l) => {
+      const next = l + 60;
+      if (running) {
+        endAt.current += 60 * 1000;
+      }
+      return next;
+    });
+  };
+
+  const reset = () => {
+    setRunning(false);
+    setTotalSec(seconds);
+    setLeft(seconds);
+  };
+
   const mm = String(Math.floor(left / 60)).padStart(2, '0');
   const ss = String(left % 60).padStart(2, '0');
+  const percent = totalSec > 0 ? Math.round(((totalSec - left) / totalSec) * 100) : 0;
+
   return (
-    <button className="timer" style={{ ['--p' as string]: ((seconds - left) / seconds) * 100, border: 0, color: 'inherit' }} onClick={toggle}
-      aria-label={running ? 'Пауза таймера' : 'Запустить таймер'}>
-      <b>{left === 0 ? 'Готово' : `${mm}:${ss}`}</b>
-    </button>
+    <div className="cook-timer-box">
+      <button
+        type="button"
+        className="cook-timer-btn"
+        style={{ ['--p' as string]: `${percent}%` }}
+        onClick={toggle}
+        aria-label={running ? 'Пауза таймера' : 'Запустить таймер'}
+      >
+        <span className="cook-timer-digits">{left === 0 ? 'Готово!' : `${mm}:${ss}`}</span>
+        <span className="cook-timer-state">{running ? 'Пауза' : left === 0 ? 'Заново' : 'Старт'}</span>
+      </button>
+      <div className="cook-timer-actions">
+        <button type="button" className="btn small quiet" onClick={addMinute}>
+          +1 мин
+        </button>
+        <button type="button" className="btn small quiet" onClick={reset} disabled={left === totalSec && !running}>
+          Сброс
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -104,16 +197,23 @@ function beep() {
 }
 
 /** Не даёт экрану погаснуть, пока открыт режим готовки */
-function useWakeLock(active: boolean) {
+function useWakeLock(active: boolean): boolean {
+  const [locked, setLocked] = useState(false);
   useEffect(() => {
-    if (!active || !('wakeLock' in navigator)) return;
+    if (!active || !('wakeLock' in navigator)) {
+      setLocked(false);
+      return;
+    }
     let lock: WakeLockSentinel | null = null;
     let cancelled = false;
     const request = async () => {
       try {
         lock = await navigator.wakeLock.request('screen');
         if (cancelled) void lock.release();
-      } catch { /* не поддерживается или отклонено */ }
+        else setLocked(true);
+      } catch {
+        setLocked(false);
+      }
     };
     const onVisible = () => { if (document.visibilityState === 'visible') void request(); };
     void request();
@@ -122,8 +222,10 @@ function useWakeLock(active: boolean) {
       cancelled = true;
       document.removeEventListener('visibilitychange', onVisible);
       void lock?.release();
+      setLocked(false);
     };
   }, [active]);
+  return locked;
 }
 
 function FinishSheet({ open, onClose, recipeId, portions }: { open: boolean; onClose: () => void; recipeId: string; portions: number }) {

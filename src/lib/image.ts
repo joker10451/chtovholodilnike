@@ -37,3 +37,12 @@ export async function toImagePart(blob: Blob): Promise<ImagePart> {
   const mime = blob.type === 'image/png' || blob.type === 'image/webp' ? blob.type : 'image/jpeg';
   return { mime_type: mime, data: btoa(binary) };
 }
+
+export function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error('Не удалось прочитать файл изображения'));
+    reader.readAsDataURL(blob);
+  });
+}

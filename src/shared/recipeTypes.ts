@@ -43,8 +43,8 @@ export interface Recipe {
   color: string;
   ingredients: Ingredient[];
   steps: Step[];
-  source: 'base' | 'ai';
-  /** Фото блюда (для рецептов из каталога) */
+  source: 'base' | 'ai' | 'custom';
+  /** Фото блюда (для рецептов из каталога или своих) */
   image?: string;
   /** Откуда рецепт: ссылка или название источника */
   origin?: string;

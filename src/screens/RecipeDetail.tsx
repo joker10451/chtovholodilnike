@@ -12,6 +12,7 @@ import { back, go, href } from '../router';
 import { getProduct } from '../shared/products';
 import { formatQty } from '../shared/units';
 import { FixRecipeSheet } from './FixRecipeSheet';
+import { CustomRecipeSheet } from './CustomRecipeSheet';
 import { plural } from './Fridge';
 
 const MARK: Record<IngredientMatch['state'], string> = { have: '✓', sub: '⇄', staple: '✓', partial: '½', missing: '×' };
@@ -25,6 +26,7 @@ export function RecipeDetail({ id }: { id: string }) {
   const ctx = useMatchContext();
   const [portions, setPortions] = useState<number | null>(null);
   const [fixOpen, setFixOpen] = useState(false);
+  const [customEditOpen, setCustomEditOpen] = useState(false);
 
   const p = portions ?? recipe?.servings ?? 2;
   const match = useMemo(() => (recipe && ctx ? matchRecipe(ctx, recipe, p) : null), [recipe, ctx, p]);
@@ -86,12 +88,31 @@ export function RecipeDetail({ id }: { id: string }) {
       <div className="stack-lg">
         <Plate big recipe={recipe} />
 
-        <div className="card flat row-gap">
-          <div className="grow">
-            <b>Порций</b>
-            <div className="small muted">Количества пересчитаются</div>
+        <div className="card flat stack" style={{ gap: 10 }}>
+          <div className="row-gap" style={{ alignItems: 'center' }}>
+            <div className="grow">
+              <b>Количество порций</b>
+              <div className="small muted">
+                {p === recipe.servings ? `${recipe.servings} порц. (исходный)` : `Масштаб ×${(p / recipe.servings).toFixed(1)}`}
+              </div>
+            </div>
+            <div style={{ width: 130 }}>
+              <Stepper label="Порций" value={p} min={1} onChange={(v) => setPortions(Math.max(1, Math.round(v)))} />
+            </div>
           </div>
-          <div style={{ width: 150 }}><Stepper label="Порций" value={p} min={1} onChange={(v) => setPortions(Math.max(1, Math.round(v)))} /></div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+            {[1, 2, 4, 6].map((num) => (
+              <button
+                key={num}
+                type="button"
+                className={`chip${p === num ? ' on' : ''}`}
+                style={{ justifyContent: 'center', fontWeight: 600, padding: '8px 0' }}
+                onClick={() => setPortions(num)}
+              >
+                {num} {plural(num, 'персона', 'персоны', 'персон')}
+              </button>
+            ))}
+          </div>
         </div>
 
         {match && match.rescueItemIds.length > 0 && (
@@ -160,10 +181,12 @@ export function RecipeDetail({ id }: { id: string }) {
         <div className="stack">
           <button className="btn block" onClick={() => go(`${href('cook', recipe.id)}?portions=${p}`)}>Начать готовить</button>
           {recipe.source === 'ai' && <button className="btn ghost block" onClick={() => setFixOpen(true)}>Поправить рецепт</button>}
-          {recipe.source === 'ai' && <button className="btn quiet" onClick={remove}>Удалить рецепт</button>}
+          {recipe.source === 'custom' && <button className="btn ghost block" onClick={() => setCustomEditOpen(true)}>Редактировать рецепт</button>}
+          {(recipe.source === 'ai' || recipe.source === 'custom') && <button className="btn quiet" onClick={remove}>Удалить рецепт</button>}
         </div>
       </div>
       {recipe.source === 'ai' && <FixRecipeSheet recipe={recipe} open={fixOpen} onClose={() => setFixOpen(false)} />}
+      {recipe.source === 'custom' && <CustomRecipeSheet initialRecipe={recipe} open={customEditOpen} onClose={() => setCustomEditOpen(false)} />}
     </main>
   );
 }

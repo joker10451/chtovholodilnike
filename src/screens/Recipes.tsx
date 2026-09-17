@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { IconCamera, IconGlobe, IconScan, IconSpark } from '../components/icons';
+import { IconCamera, IconGlobe, IconPlus, IconScan, IconSpark } from '../components/icons';
 import { Empty, Header, Plate, Ring, Segmented } from '../components/ui';
 import { useAllRecipes } from '../data/repo';
 import { useMatchContext } from '../hooks';
@@ -7,6 +7,7 @@ import { onShelf, rankRecipes, type RecipeMatch, type Shelf } from '../lib/match
 import { go, href, useRoute } from '../router';
 import { isFavorite, tasteOf } from '../lib/taste';
 import { getProduct, normalizeName } from '../shared/products';
+import { CustomRecipeSheet } from './CustomRecipeSheet';
 import { plural } from './Fridge';
 
 const TAG_CHIPS = [
@@ -29,6 +30,7 @@ export function Recipes() {
   const recipes = useAllRecipes();
   const [query, setQuery] = useState('');
   const [tag, setTag] = useState<string>('all');
+  const [customOpen, setCustomOpen] = useState(false);
   const shelfParam = route.query.get('shelf') as Shelf | null;
 
   const hasItems = (ctx?.items.length ?? 0) > 0;
@@ -69,7 +71,7 @@ export function Recipes() {
     if (tag === 'all') return true;
     if (tag === 'quick') return m.recipe.time <= 25;
     if (tag === 'favorite') return isFavorite(tasteOf(ctx?.tastes, m.recipe.id));
-    if (tag === 'mine') return m.recipe.source === 'ai';
+    if (tag === 'mine') return m.recipe.source === 'ai' || m.recipe.source === 'custom';
     if (tag === 'выпечка') return m.recipe.tags.includes('выпечка') || m.recipe.tags.includes('десерт');
     return m.recipe.tags.includes(tag);
   });
@@ -84,14 +86,25 @@ export function Recipes() {
             : `${recipes.length} ${plural(recipes.length, 'рецепт', 'рецепта', 'рецептов')} · каталог блюд`
         }
         right={
-          <a
-            className="icon-btn"
-            href={href('chef')}
-            aria-label="Придумать рецепт из того, что есть"
-            style={{ color: 'var(--brand)' }}
-          >
-            <IconSpark width={18} height={18} />
-          </a>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={() => setCustomOpen(true)}
+              aria-label="Добавить свой рецепт"
+              style={{ color: 'var(--brand)' }}
+            >
+              <IconPlus width={18} height={18} />
+            </button>
+            <a
+              className="icon-btn"
+              href={href('chef')}
+              aria-label="Придумать рецепт с шефом"
+              style={{ color: 'var(--brand)' }}
+            >
+              <IconSpark width={18} height={18} />
+            </a>
+          </div>
         }
       />
 
@@ -206,6 +219,7 @@ export function Recipes() {
         <a className="btn ghost block" href={href('chef')}><IconSpark /> Придумать из того, что есть</a>
         <a className="btn ghost block" href={href('catalog')}><IconGlobe /> Каталог с переводом</a>
       </div>
+      <CustomRecipeSheet open={customOpen} onClose={() => setCustomOpen(false)} />
     </main>
   );
 }
@@ -220,7 +234,7 @@ function RecipeCard({ match: m, hasItems, favorite }: { match: RecipeMatch; hasI
         <span className="meta num">
           <span>{r.time} мин</span>
           <span>{r.servings} порц.</span>
-          {r.source === 'ai' && <span>мой рецепт</span>}
+          {(r.source === 'ai' || r.source === 'custom') && <span>мой рецепт</span>}
         </span>
         <span className="wrap-gap">
           {favorite && <span className="stk fresh">любимое</span>}

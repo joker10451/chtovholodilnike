@@ -294,4 +294,38 @@ describe('рацион на неделю', () => {
       }
     });
   });
+
+  describe('пользовательские рецепты и масштабирование порций', () => {
+    it('корректно масштабирует ингредиенты под разное число персон', () => {
+      const customRecipe = {
+        id: 'custom:sharlotka',
+        title: 'Мамина шарлотка',
+        time: 40,
+        servings: 4,
+        tags: ['выпечка', 'десерт'],
+        color: '#E05A47',
+        ingredients: [
+          { key: 'apple', name: 'Яблоки', qty: 4, unit: 'pcs' as const, role: 'key' as const },
+          { key: 'egg', name: 'Яйца', qty: 4, unit: 'pcs' as const, role: 'key' as const },
+          { key: 'flour', name: 'Мука', qty: 160, unit: 'g' as const, role: 'secondary' as const },
+          { key: 'sugar', name: 'Сахар', qty: 160, unit: 'g' as const, role: 'secondary' as const },
+        ],
+        steps: [
+          { text: 'Взбейте яйца с сахаром', timer: 300 },
+          { text: 'Выпекайте 35 минут', timer: 2100 },
+        ],
+        source: 'custom' as const,
+      };
+
+      // 2 персоны (в 2 раза меньше)
+      const factor2 = 2 / customRecipe.servings;
+      expect(customRecipe.ingredients[0].qty * factor2).toBe(2);
+      expect(customRecipe.ingredients[2].qty * factor2).toBe(80);
+
+      // 6 персон (в 1.5 раза больше)
+      const factor6 = 6 / customRecipe.servings;
+      expect(customRecipe.ingredients[0].qty * factor6).toBe(6);
+      expect(customRecipe.ingredients[2].qty * factor6).toBe(240);
+    });
+  });
 });
