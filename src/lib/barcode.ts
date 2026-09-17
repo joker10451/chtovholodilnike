@@ -7,8 +7,9 @@ import type { Nutriments } from '../data/types';
 import type { PackageInfo } from '../shared/aiSchemas';
 import { addDays, isISODate } from '../shared/dates';
 import { getProduct, guessProductKey, type BaseUnit, type Category, type Location } from '../shared/products';
+import { findPresetBarcode } from './barcodePreset';
 
-export type ProductSource = 'memory' | 'openfoodfacts' | 'photo' | 'manual';
+export type ProductSource = 'memory' | 'preset' | 'openfoodfacts' | 'photo' | 'manual';
 
 export interface ProductInfo {
   barcode: string | null;
@@ -155,9 +156,34 @@ export interface LookupResult {
   note: string | null;
 }
 
+export function fromPreset(code: string): ProductInfo | null {
+  const item = findPresetBarcode(code);
+  if (!item) return null;
+  return {
+    ...emptyProduct(code),
+    name: item.name,
+    brand: item.brand,
+    productKey: item.productKey,
+    category: item.category,
+    qty: item.qty,
+    unit: item.unit,
+    location: item.location,
+    fatPercent: item.fatPercent ?? null,
+    shelfLifeDays: item.shelfLifeDays ?? null,
+    afterOpeningDays: item.afterOpeningDays ?? null,
+    nutriments: item.nutriments ?? null,
+    storage: item.storage ?? null,
+    source: 'preset',
+  };
+}
+
 export async function lookupBarcode(code: string): Promise<LookupResult> {
   const remembered = await fromMemory(code);
   if (remembered) return { product: remembered, note: null };
+
+  const preset = fromPreset(code);
+  if (preset) return { product: preset, note: null };
+
   if (!navigator.onLine) return { product: null, note: 'Нет интернета — в вашей базе этого товара ещё нет' };
 
   const data = await fetchOff(code);

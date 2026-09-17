@@ -5,7 +5,7 @@ import type { InventoryItem } from '../data/types';
 import { GeneratedRecipeSchema, RecognitionSchema } from '../shared/aiSchemas';
 import { addDays, daysBetween } from '../shared/dates';
 import { estimateExpiry, freshness, stickerText } from '../shared/freshness';
-import { guessProductKey, PRODUCTS } from '../shared/products';
+import { getProduct, guessProductKey, PRODUCTS } from '../shared/products';
 import { BASE_RECIPES } from '../shared/recipes';
 import { convert, formatQty } from '../shared/units';
 import { mapCategories, parseQuantity } from './barcode';
@@ -266,6 +266,32 @@ describe('рацион на неделю', () => {
       expect(mapCategories(['en:fresh-vegetables', 'en:tomatoes'])).toBe('vegetables');
       expect(mapCategories(['en:fruits', 'en:apples'])).toBe('fruits');
       expect(mapCategories(['en:beverages', 'en:orange-juice'])).toBe('drinks');
+    });
+  });
+
+  describe('поиск рецептов по названию и ингредиентам', () => {
+    it('находит рецепты по продуктам в составе', () => {
+      const q = 'фарш';
+      const found = BASE_RECIPES.filter((r) => {
+        const matchTitle = r.title.toLowerCase().includes(q);
+        const matchIngredient = r.ingredients.some((i) => {
+          if (i.name && i.name.toLowerCase().includes(q)) return true;
+          const p = getProduct(i.key);
+          return p ? p.name.toLowerCase().includes(q) : false;
+        });
+        return matchTitle || matchIngredient;
+      });
+      expect(found.length).toBeGreaterThan(4);
+      for (const r of found) {
+        const has =
+          r.title.toLowerCase().includes(q) ||
+          r.ingredients.some((i) => {
+            if (i.name && i.name.toLowerCase().includes(q)) return true;
+            const p = getProduct(i.key);
+            return p ? p.name.toLowerCase().includes(q) : false;
+          });
+        expect(has).toBe(true);
+      }
     });
   });
 });

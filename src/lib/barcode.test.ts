@@ -1,7 +1,8 @@
 import 'fake-indexeddb/auto';
 import { describe, expect, it } from 'vitest';
 import { estimateExpiry, freshness } from '../shared/freshness';
-import { emptyProduct, fromPackage, mergeProduct, packageExpiry, parseOffProduct } from './barcode';
+import { emptyProduct, fromPackage, fromPreset, lookupBarcode, mergeProduct, packageExpiry, parseOffProduct } from './barcode';
+import { POPULAR_BARCODES } from './barcodePreset';
 import { isValidGtin, normalizeCode } from './scanner';
 
 const TODAY = '2026-09-13';
@@ -62,5 +63,32 @@ describe('сведения о товаре', () => {
     const r = estimateExpiry({ productKey: 'kefir', category: 'dairy', location: 'fridge', purchasedAt: TODAY, openedAt: null, packageDate: '2026-09-10' });
     expect(r).toEqual({ expiresAt: '2026-09-10', isEstimate: false });
     expect(freshness(r.expiresAt, TODAY)).toBe('expired');
+  });
+
+  it('все штрихкоды во встроенном пресете валидны по контрольной сумме GTIN', () => {
+    const codes = Object.keys(POPULAR_BARCODES);
+    expect(codes.length).toBeGreaterThan(40);
+    for (const code of codes) {
+      expect(isValidGtin(code), `Код ${code} должен быть валидным EAN-13`).toBe(true);
+    }
+  });
+
+  it('находит базовый товар из встроенного пресета офлайн', async () => {
+    // Молоко Простоквашино 3,2%
+    const p = fromPreset('4607004891694');
+    expect(p).not.toBeNull();
+    expect(p?.name).toBe('Молоко 3,2%');
+    expect(p?.brand).toBe('Простоквашино');
+    expect(p?.productKey).toBe('milk');
+    expect(p?.category).toBe('dairy');
+    expect(p?.qty).toBe(930);
+    expect(p?.unit).toBe('ml');
+    expect(p?.fatPercent).toBe(3.2);
+    expect(p?.source).toBe('preset');
+
+    const res = await lookupBarcode('4607004891694');
+    expect(res.product?.name).toBe('Молоко 3,2%');
+    expect(res.product?.source).toBe('preset');
+    expect(res.note).toBeNull();
   });
 });

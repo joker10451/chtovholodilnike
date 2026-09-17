@@ -10,6 +10,7 @@ import { href } from '../router';
 
 const SOURCE_LABEL: Record<ProductInfo['source'], string> = {
   memory: 'Из вашей базы',
+  preset: 'Базовый товар',
   openfoodfacts: 'Найден в базе',
   photo: 'Прочитано с упаковки',
   manual: 'Нет в базах',

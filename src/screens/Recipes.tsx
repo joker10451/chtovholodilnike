@@ -12,12 +12,15 @@ import { plural } from './Fridge';
 const TAG_CHIPS = [
   { id: 'all', label: 'Все' },
   { id: 'favorite', label: 'Любимые' },
-  { id: 'mine', label: 'Мои' },
-  { id: 'завтрак', label: 'Завтраки' },
+  { id: 'суп', label: 'Супы' },
   { id: 'ужин', label: 'Обед и ужин' },
-  { id: 'напиток', label: 'Смузи и напитки' },
+  { id: 'завтрак', label: 'Завтраки' },
+  { id: 'салат', label: 'Салаты' },
+  { id: 'выпечка', label: 'Выпечка и десерты' },
   { id: 'quick', label: 'До 25 мин' },
+  { id: 'напиток', label: 'Напитки' },
   { id: 'впрок', label: 'Впрок' },
+  { id: 'mine', label: 'Мои' },
 ];
 
 export function Recipes() {
@@ -53,12 +56,21 @@ export function Recipes() {
 
   const q = normalizeName(query);
   const visible = ranked.filter((m) => {
-    if (q) return normalizeName(m.recipe.title).includes(q);
+    if (q) {
+      const matchTitle = normalizeName(m.recipe.title).includes(q);
+      const matchIngredient = m.recipe.ingredients.some((ing) => {
+        if (ing.name && normalizeName(ing.name).includes(q)) return true;
+        const p = getProduct(ing.key);
+        return p ? normalizeName(p.name).includes(q) : false;
+      });
+      return matchTitle || matchIngredient;
+    }
     if (!onShelf(m, shelf, hasItems)) return false;
     if (tag === 'all') return true;
     if (tag === 'quick') return m.recipe.time <= 25;
     if (tag === 'favorite') return isFavorite(tasteOf(ctx?.tastes, m.recipe.id));
     if (tag === 'mine') return m.recipe.source === 'ai';
+    if (tag === 'выпечка') return m.recipe.tags.includes('выпечка') || m.recipe.tags.includes('десерт');
     return m.recipe.tags.includes(tag);
   });
 
@@ -87,7 +99,7 @@ export function Recipes() {
         <input
           className="input"
           type="search"
-          placeholder="Поиск по названию"
+          placeholder="Поиск по названию или продукту"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />

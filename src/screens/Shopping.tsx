@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { IconCheck, IconClose, IconPlus, IconShare } from '../components/icons';
 import { ProductIcon } from '../components/foodIcons';
-import { Empty, Header, toast, useToday } from '../components/ui';
+import { Empty, Header, Segmented, toast, useToday } from '../components/ui';
 import {
   addShoppingItems,
   clearCheckedShoppingItems,
@@ -31,6 +31,7 @@ export function Shopping() {
   const items = useShoppingList();
   const today = useToday();
   const [input, setInput] = useState('');
+  const [mode, setMode] = useState<'all' | 'toBuy'>('all');
 
   const toBuy = items?.filter((i) => !i.checked) ?? [];
   const inCart = items?.filter((i) => i.checked) ?? [];
@@ -38,14 +39,18 @@ export function Shopping() {
   const groups = useMemo(() => {
     if (!items) return [];
     return DEPARTMENTS
-      .map((d) => ({
-        title: d.title,
-        items: items
-          .filter((i) => d.categories.includes(i.category))
-          .sort((a, b) => Number(a.checked) - Number(b.checked) || b.createdAt - a.createdAt),
-      }))
+      .map((d) => {
+        const depItems = items.filter((i) => d.categories.includes(i.category));
+        const filtered = mode === 'toBuy' ? depItems.filter((i) => !i.checked) : depItems;
+        return {
+          title: d.title,
+          total: depItems.length,
+          toBuyCount: depItems.filter((i) => !i.checked).length,
+          items: filtered.sort((a, b) => Number(a.checked) - Number(b.checked) || b.createdAt - a.createdAt),
+        };
+      })
       .filter((g) => g.items.length > 0);
-  }, [items]);
+  }, [items, mode]);
 
   async function handleAdd(e: FormEvent) {
     e.preventDefault();
@@ -63,7 +68,17 @@ export function Shopping() {
 
   async function handleShare() {
     if (toBuy.length === 0) return;
-    const text = ['Купить:', ...toBuy.map((i) => `— ${i.name}${i.qty ? `, ${formatQty(i.qty, i.unit)}` : ''}`)].join('\n');
+    const lines: string[] = ['🛒 Купить:'];
+    for (const dep of DEPARTMENTS) {
+      const depItems = toBuy.filter((i) => dep.categories.includes(i.category));
+      if (depItems.length > 0) {
+        lines.push(`\n${dep.title}:`);
+        for (const item of depItems) {
+          lines.push(`— ${item.name}${item.qty ? `, ${formatQty(item.qty, item.unit)}` : ''}`);
+        }
+      }
+    }
+    const text = lines.join('\n');
     if (navigator.share) {
       try {
         await navigator.share({ text });
@@ -119,6 +134,17 @@ export function Shopping() {
           </div>
         )}
 
+        {inCart.length > 0 && toBuy.length > 0 && (
+          <Segmented<'all' | 'toBuy'>
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: 'all', label: `Все (${items?.length ?? 0})` },
+              { value: 'toBuy', label: `Только купить (${toBuy.length})` },
+            ]}
+          />
+        )}
+
         {items && items.length === 0 && (
           <Empty
             title="Список покупок пуст"
@@ -135,7 +161,9 @@ export function Shopping() {
 
         {groups.map((group) => (
           <section key={group.title} className="stack" style={{ gap: 6 }}>
-            <div className="section-label">{group.title} · {group.items.length}</div>
+            <div className="section-label">
+              {group.title} · {group.toBuyCount > 0 ? (group.toBuyCount === group.total ? `${group.toBuyCount}` : `${group.toBuyCount} из ${group.total}`) : 'всё в корзине'}
+            </div>
             <div className="list">
               {group.items.map((item) => <ShoppingRow key={item.id} item={item} />)}
             </div>
