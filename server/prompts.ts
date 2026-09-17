@@ -87,7 +87,10 @@ export function userText(req: AiRequest, pageText?: string): string {
     case 'shelf':
       return `Сегодня ${req.today}. Фотографий: ${req.images.length}. Распознай продукты.`;
     case 'receipt':
-      return `Сегодня ${req.today}. Разбери чек.`;
+      return [
+        `Сегодня ${req.today}. Разбери чек.`,
+        req.hint ? `Данные фискального чека: ${req.hint}` : '',
+      ].filter(Boolean).join('\n');
     case 'text':
       return `Сегодня ${req.today}. Фраза: «${req.text}»`;
     case 'package':

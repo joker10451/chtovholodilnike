@@ -103,7 +103,12 @@ const today = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 export const AiRequestSchema = z.discriminatedUnion('task', [
   z.object({ task: z.literal('shelf'), today, images: z.array(ImagePartSchema).min(1).max(6) }),
-  z.object({ task: z.literal('receipt'), today, images: z.array(ImagePartSchema).min(1).max(4) }),
+  z.object({
+    task: z.literal('receipt'),
+    today,
+    images: z.array(ImagePartSchema).min(1).max(4),
+    hint: z.string().max(500).nullable().optional().describe('Реквизиты чека с QR-кода: сумма, дата, ФН, ФД'),
+  }),
   z.object({ task: z.literal('text'), today, text: z.string().min(1).max(2000) }),
   z.object({
     task: z.literal('package'),

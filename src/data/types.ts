@@ -115,6 +115,7 @@ export interface ScanJob {
   photos: Blob[];
   result?: Recognition;
   error?: string;
+  hint?: string | null;
 }
 
 /** Настройки только этого телефона */

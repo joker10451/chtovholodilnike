@@ -10,9 +10,9 @@ import type { ScanMode } from './types';
 
 let processing = false;
 
-export async function enqueueScan(mode: ScanMode, photos: Blob[]): Promise<string> {
+export async function enqueueScan(mode: ScanMode, photos: Blob[], hint?: string | null): Promise<string> {
   const id = newId();
-  await db.scans.put({ id, mode, photos, createdAt: Date.now(), status: 'queued' });
+  await db.scans.put({ id, mode, photos, createdAt: Date.now(), status: 'queued', hint });
   void processScanQueue();
   return id;
 }
@@ -36,7 +36,7 @@ export async function processScanQueue(): Promise<void> {
       await db.scans.update(job.id, { status: 'processing' });
       try {
         const images = await Promise.all(job.photos.map(toImagePart));
-        const result = await recognize({ task: job.mode, today: todayISO(), images });
+        const result = await recognize({ task: job.mode, today: todayISO(), images, hint: job.hint ?? undefined });
         await db.scans.update(job.id, { status: 'ready', result, error: undefined });
       } catch (e) {
         if (e instanceof OfflineError) {

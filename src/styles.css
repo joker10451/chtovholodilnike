@@ -414,6 +414,35 @@ button.chip.on { background: var(--brand-soft); border-color: var(--brand); colo
 .update-bar span { display: block; font-size: 12.5px; opacity: .75; }
 .update-bar .btn.quiet { color: var(--ground); }
 
+/* ——— Кассовые чеки РФ (54-ФЗ) ——— */
+.receipt-sheet-content { display: flex; flex-direction: column; gap: 10px; }
+.receipt-sum-hero {
+  background: var(--brand-soft); border-radius: 16px; padding: 16px; text-align: center;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.receipt-sum-label { font-size: 13px; color: var(--ink-2); font-weight: 500; }
+.receipt-sum-val { font-size: 32px; font-weight: 700; font-family: var(--mono); color: var(--brand); }
+.receipt-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.receipt-meta-grid div { background: var(--surface); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.receipt-meta-grid span { font-size: 11px; color: var(--ink-3); }
+.receipt-meta-grid b { font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.receipt-preview-card {
+  background: var(--fresh-soft); border: 1px solid var(--fresh); border-radius: 12px;
+  padding: 10px 12px; display: grid; gap: 2px; color: var(--fresh);
+}
+.receipt-preview-card b { font-size: 14px; }
+.receipt-preview-card span { font-size: 12px; opacity: .9; }
+
+.receipt-verified-banner {
+  display: flex; align-items: center; gap: 12px; background: var(--surface);
+  border: 1px solid var(--line); border-left: 4px solid var(--fresh); border-radius: 14px; padding: 12px 14px;
+}
+.receipt-verified-badge { background: var(--fresh-soft); color: var(--fresh); font-weight: 700; font-size: 12px; padding: 4px 8px; border-radius: 8px; flex-shrink: 0; }
+.receipt-verified-info { display: grid; gap: 2px; min-width: 0; }
+.receipt-verified-info b { font-size: 13.5px; }
+.receipt-verified-info span { font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 /* ——— Скан: очередь, рамки на фото, строки проверки ——— */
 .scan-job { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--surface); }
 .scan-job .thumb { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; background: var(--sunken); flex: 0 0 auto; }

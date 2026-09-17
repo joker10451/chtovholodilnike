@@ -10,6 +10,10 @@ import { useCamera } from '../lib/camera';
 import { makeItem } from '../lib/convert';
 import { shrinkPhoto, toImagePart } from '../lib/image';
 import { detectCodes, isValidGtin, prepareScanner } from '../lib/scanner';
+import {
+  parseFiscalQr, formatFiscalSum, formatFiscalDate,
+  fiscalReceiptToAiHint, type FiscalReceipt,
+} from '../lib/fiscalReceipt';
 import { useObjectUrls } from '../hooks';
 import { go, href } from '../router';
 import { shortDate } from '../shared/dates';
@@ -34,7 +38,7 @@ const HINTS: Record<Mode, string> = {
   barcode: 'Наведите на штрихкод — он прочитается сам',
   package: 'Снимите упаковку этикеткой к камере, затем сторону с датой',
   shelf: 'Одна полка — один снимок',
-  receipt: 'Чек целиком, длинный — в 2–3 снимка',
+  receipt: 'Наведите на QR-код чека или сфотографируйте чек целиком',
   voice: '',
 };
 
@@ -107,6 +111,9 @@ export function Scan() {
     try { return localStorage.getItem(STREAM_KEY) === '1'; } catch { return false; }
   });
   const [streamToast, setStreamToast] = useState<{ item?: Added; unknownCode?: string; message: string } | null>(null);
+  const [receiptQr, setReceiptQr] = useState<FiscalReceipt | null>(null);
+  const [receiptSheetOpen, setReceiptSheetOpen] = useState(false);
+  const [receiptPasteOpen, setReceiptPasteOpen] = useState(false);
   const lastScanRef = useRef<{ code: string; time: number }>({ code: '', time: 0 });
 
   function setStreamMode(val: boolean | ((prev: boolean) => boolean)) {
@@ -136,6 +143,7 @@ export function Scan() {
   function setMode(m: Mode) {
     setModeState(m);
     setShots([]);
+    setReceiptQr(null);
     setFlow({ step: 'scan' });
     try { localStorage.setItem(MODE_KEY, m); } catch { /* приватный режим */ }
   }
@@ -202,10 +210,10 @@ export function Scan() {
     }
   }
 
-  // Непрерывный поиск штрихкода в центральной полосе кадра
+  // Непрерывный поиск штрихкода в центральной полосе кадра и QR-кода чека
   const { grabBand, status, capture } = cam;
   useEffect(() => {
-    if (mode !== 'barcode' || flow.step !== 'scan' || status !== 'live') return;
+    if ((mode !== 'barcode' && mode !== 'receipt') || flow.step !== 'scan' || status !== 'live') return;
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
     const startedAt = Date.now();
@@ -220,23 +228,45 @@ export function Scan() {
           if (codes.length) {
             const code = codes[0].value;
             const now = Date.now();
-            if (code === lastScanRef.current.code && now - lastScanRef.current.time < 2500) {
-              timer = setTimeout(tick, 120);
-              return;
+
+            // Режим кассового чека: ищем фискальный QR-код 54-ФЗ
+            if (mode === 'receipt') {
+              const fiscal = parseFiscalQr(code);
+              if (fiscal) {
+                if (code === lastScanRef.current.code && now - lastScanRef.current.time < 3000) {
+                  timer = setTimeout(tick, 200);
+                  return;
+                }
+                lastScanRef.current = { code, time: now };
+                playScanBeep(true);
+                navigator.vibrate?.([60, 40, 60]);
+                setFlash(true);
+                setTimeout(() => setFlash(false), 200);
+                setReceiptQr(fiscal);
+                setReceiptSheetOpen(true);
+                return;
+              }
             }
 
-            if (streamMode) {
-              lastScanRef.current = { code, time: now };
-              await handleStreamBarcode(code);
-              timer = setTimeout(tick, 450);
+            if (mode === 'barcode') {
+              if (code === lastScanRef.current.code && now - lastScanRef.current.time < 2500) {
+                timer = setTimeout(tick, 120);
+                return;
+              }
+
+              if (streamMode) {
+                lastScanRef.current = { code, time: now };
+                await handleStreamBarcode(code);
+                timer = setTimeout(tick, 450);
+                return;
+              }
+
+              // Одиночный режим: снимок и открытие карточки
+              const frame = await capture(1600).catch(() => null);
+              if (stopped) return;
+              void openCode(code, frame);
               return;
             }
-
-            // Одиночный режим: снимок и открытие карточки
-            const frame = await capture(1600).catch(() => null);
-            if (stopped) return;
-            void openCode(code, frame);
-            return;
           }
         }
       } catch { /* кадр не прочитался — пробуем следующий */ }
@@ -359,18 +389,39 @@ export function Scan() {
     }
   }
 
-  async function finishShots() {
+  async function finishShots(explicitPhotos?: Blob[]) {
     if (mode === 'package') {
-      const photos = shots;
+      const photos = explicitPhotos ?? shots;
       setShots([]);
       await readPhotos(photos, emptyProduct(null), photos[0]);
       return;
     }
     if (mode !== 'shelf' && mode !== 'receipt') return;
-    const id = await enqueueScan(mode, shots);
+    const photosToQueue = explicitPhotos ?? shots;
+    const hint = mode === 'receipt' && receiptQr ? fiscalReceiptToAiHint(receiptQr) : undefined;
+    const id = await enqueueScan(mode, photosToQueue, hint);
     setShots([]);
+    setReceiptQr(null);
     if (navigator.onLine) go(href('review', id));
     else toast('Фото сохранены. Распознаю, когда появится интернет.');
+  }
+
+  async function handleSnapAndRecognizeReceipt() {
+    setReceiptSheetOpen(false);
+    setBusy(true);
+    try {
+      const blob = await cam.capture(1600);
+      if (blob) {
+        await finishShots([blob]);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRecognizeWithShots() {
+    setReceiptSheetOpen(false);
+    await finishShots();
   }
 
   async function toFridge(r: CardResult) {
@@ -419,7 +470,11 @@ export function Scan() {
         : slowHint
           ? 'Не читается? Отодвиньте телефон на 15–20 см или нажмите кнопку съёмки — нейросеть прочитает упаковку'
           : HINTS[mode]
-      : HINTS[mode];
+      : mode === 'receipt'
+        ? receiptQr
+          ? `🧾 Чек на ${formatFiscalSum(receiptQr.sum)} считан! Сделайте снимок чека для разбора`
+          : HINTS[mode]
+        : HINTS[mode];
   const inFridge = session.filter((a) => a.to === 'fridge').length;
 
   return (
@@ -437,6 +492,16 @@ export function Scan() {
             title="Конвейер: сканирование товаров подряд без пауз"
           >
             ⚡ Конвейер {streamMode ? 'ВКЛ' : 'ВЫКЛ'}
+          </button>
+        )}
+        {mode === 'receipt' && receiptQr && flow.step === 'scan' && (
+          <button
+            type="button"
+            className="cam-pill hot"
+            onClick={() => setReceiptSheetOpen(true)}
+            title="Посмотреть реквизиты распознанного чека"
+          >
+            🧾 {formatFiscalSum(receiptQr.sum)}
           </button>
         )}
         {session.length > 0 && (
@@ -573,11 +638,13 @@ export function Scan() {
                 {flow.step === 'capture' ? (
                   <button className="cam-text" onClick={() => manualCard(flow)}>Вручную</button>
                 ) : collecting && shots.length > 0 ? (
-                  <button className="cam-done" onClick={finishShots}>
+                  <button className="cam-done" onClick={() => void finishShots()}>
                     {mode === 'package' ? 'Прочитать' : online ? 'Готово' : 'Сохранить'}
                   </button>
                 ) : mode === 'barcode' ? (
                   <button className="cam-text" onClick={() => setManualOpen(true)} aria-label="Ввести цифры штрихкода">123</button>
+                ) : mode === 'receipt' && shots.length === 0 ? (
+                  <button className="cam-text" onClick={() => setReceiptPasteOpen(true)} aria-label="Вставить QR-код чека">QR</button>
                 ) : null}
               </div>
             </div>
@@ -613,6 +680,25 @@ export function Scan() {
       )}
 
       <ManualCodeSheet open={manualOpen} onClose={() => setManualOpen(false)} onSubmit={(code) => { setManualOpen(false); void openCode(code, null); }} />
+
+      <ReceiptQrSheet
+        open={receiptSheetOpen}
+        receipt={receiptQr}
+        shotsCount={shots.length}
+        onClose={() => setReceiptSheetOpen(false)}
+        onRecognizeWithShots={handleRecognizeWithShots}
+        onSnapAndRecognize={() => void handleSnapAndRecognizeReceipt()}
+      />
+
+      <ReceiptPasteSheet
+        open={receiptPasteOpen}
+        onClose={() => setReceiptPasteOpen(false)}
+        onSubmit={(receipt) => {
+          setReceiptPasteOpen(false);
+          setReceiptQr(receipt);
+          setReceiptSheetOpen(true);
+        }}
+      />
 
       <Sheet
         open={sessionOpen}
@@ -694,4 +780,123 @@ function ScanRow({ job, online }: { job: ScanJob; online: boolean }) {
 function QueueKick() {
   useEffect(() => { void processScanQueue(); }, []);
   return null;
+}
+
+function ReceiptQrSheet({
+  open,
+  receipt,
+  shotsCount,
+  onClose,
+  onRecognizeWithShots,
+  onSnapAndRecognize,
+}: {
+  open: boolean;
+  receipt: FiscalReceipt | null;
+  shotsCount: number;
+  onClose: () => void;
+  onRecognizeWithShots: () => void;
+  onSnapAndRecognize: () => void;
+}) {
+  if (!receipt) return null;
+  return (
+    <Sheet open={open} onClose={onClose} title="Кассовый чек РФ">
+      <div className="receipt-sheet-content">
+        <div className="receipt-sum-hero">
+          <span className="receipt-sum-label">Итоговая сумма чека</span>
+          <b className="receipt-sum-val">{formatFiscalSum(receipt.sum)}</b>
+        </div>
+        <div className="receipt-meta-grid">
+          <div>
+            <span>Дата и время</span>
+            <b>{formatFiscalDate(receipt.purchaseDate, receipt.purchaseTime)}</b>
+          </div>
+          <div>
+            <span>Фискальный документ</span>
+            <b>ФД №{receipt.fd}</b>
+          </div>
+          <div>
+            <span>Фискальный накопитель</span>
+            <b>ФН ...{receipt.fn.slice(-6)}</b>
+          </div>
+          <div>
+            <span>Фискальный признак</span>
+            <b>ФП {receipt.fp}</b>
+          </div>
+        </div>
+
+        <p className="small muted" style={{ marginTop: 8 }}>
+          {shotsCount > 0
+            ? `Сделано снимков чека: ${shotsCount}. Нейросеть сопоставит строки с точной суммой.`
+            : 'Сделайте снимок ленты чека — нейросеть прочитает продукты и проверит каждую позицию.'}
+        </p>
+
+        <div className="stack" style={{ marginTop: 14 }}>
+          {shotsCount > 0 ? (
+            <button className="btn block" onClick={onRecognizeWithShots}>
+              Распознать чек ({shotsCount} фото)
+            </button>
+          ) : (
+            <button className="btn block" onClick={onSnapAndRecognize}>
+              Сфотографировать и распознать
+            </button>
+          )}
+          <button className="btn ghost block" onClick={onClose}>
+            {shotsCount > 0 ? 'Добавить ещё фото' : 'Продолжить съёмку вручную'}
+          </button>
+        </div>
+      </div>
+    </Sheet>
+  );
+}
+
+function ReceiptPasteSheet({
+  open,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (receipt: FiscalReceipt) => void;
+}) {
+  const [text, setText] = useState('');
+  const parsed = useMemo(() => parseFiscalQr(text), [text]);
+
+  function handlePasteSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (parsed) {
+      onSubmit(parsed);
+      setText('');
+    }
+  }
+
+  return (
+    <Sheet open={open} onClose={onClose} title="Вставить чек из буфера">
+      <form className="stack" onSubmit={handlePasteSubmit}>
+        <p className="small muted">
+          Вставьте строку фискального QR-кода чека (из приложения банка, ОФД или СМС):
+        </p>
+        <textarea
+          className="textarea mono"
+          placeholder="t=20260917T1523&s=1240.50&fn=9999...&i=12345&fp=3456...&n=1"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={3}
+          autoFocus
+        />
+        {parsed ? (
+          <div className="receipt-preview-card">
+            <b>✓ Чек распознан: {formatFiscalSum(parsed.sum)}</b>
+            <span>{formatFiscalDate(parsed.purchaseDate, parsed.purchaseTime)} · ФД №{parsed.fd}</span>
+          </div>
+        ) : text.trim().length > 0 ? (
+          <p className="small error-text">
+            Не удалось найти реквизиты чека. Проверьте параметры fn=, s=, t= и i= (или fd=).
+          </p>
+        ) : null}
+        <button className="btn block" type="submit" disabled={!parsed}>
+          Применить чек
+        </button>
+      </form>
+    </Sheet>
+  );
 }

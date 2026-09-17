@@ -105,7 +105,11 @@ export function Review({ id }: { id: string }) {
     );
   }
 
-  const purchasedAt = job.mode === 'receipt' && isISODate(job.result?.purchase_date) ? job.result!.purchase_date! : today;
+  const hintDate = job?.hint?.match(/Дата покупки:\s*(\d{4}-\d{2}-\d{2})/)?.[1];
+  const purchasedAt =
+    job.mode === 'receipt'
+      ? (isISODate(job.result?.purchase_date) ? job.result!.purchase_date! : (hintDate ?? today))
+      : today;
   const questions = drafts.filter((d) => d.include && d.question && !d.answered);
   const selected = drafts.filter((d) => d.include);
   const allOn = selected.length === drafts.length;
@@ -131,6 +135,16 @@ export function Review({ id }: { id: string }) {
       />
 
       <div className="stack-lg">
+        {job.mode === 'receipt' && job.hint && (
+          <div className="receipt-verified-banner">
+            <span className="receipt-verified-badge">✓ 54-ФЗ</span>
+            <div className="receipt-verified-info">
+              <b>Фискальный чек подтверждён</b>
+              <span>{job.hint}</span>
+            </div>
+          </div>
+        )}
+
         {job.mode === 'shelf' && urls.length > 0 && (
           <div>
             <div className="photo-view">
